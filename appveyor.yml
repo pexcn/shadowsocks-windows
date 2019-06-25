@@ -20,3 +20,17 @@ artifacts:
   name: Shadowsocks-release.exe
 - path: shadowsocks-csharp\bin\x86\Debug\Shadowsocks.exe
   name: Shadowsocks-debug.exe
+deploy:
+  provider: GitHub
+  tag: $(appveyor_build_version)
+  release: $(appveyor_build_version)
+  description: "Build version: $(appveyor_build_version)"
+  artifact: shadowsocks-csharp\bin\x86\Release\Shadowsocks.exe
+  draft: false
+  prerelease: false
+  force_update: true
+  auth_token:
+    secure: D6LTeQH1zPgo5/A77bCFXJiLK8wVabWrUKO2KYfMIWI8F+YJVih6d82M8NiDDIJb
+  on:
+    branch: master
+skip_tags: true
