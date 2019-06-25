@@ -131,8 +131,8 @@ Sysproxy ()            https://github.com/Noisyfox/sysproxy
 
 
 
-[Appveyor]:     https://ci.appveyor.com/project/celeron533/shadowsocks-windows
-[Build Status]: https://ci.appveyor.com/api/projects/status/tfw57q6eecippsl5/branch/master?svg=true
+[Appveyor]:     https://ci.appveyor.com/project/pexcn/shadowsocks-windows
+[Build Status]: https://ci.appveyor.com/api/projects/status/dv7ungk4ax7ibswg/branch/master?svg=true
 [release page]: https://github.com/shadowsocks/shadowsocks-csharp/releases
 [GFWList]:      https://github.com/gfwlist/gfwlist
 [Servers]:      https://github.com/shadowsocks/shadowsocks/wiki/Ports-and-Clients#linux--server-side
