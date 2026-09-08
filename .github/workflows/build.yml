@@ -15,29 +15,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
+      - name: Test
+        run: dotnet test test/ShadowsocksTest.csproj -c Release
 
-      # Legacy non-SDK projects with packages.config: the dotnet CLI can neither
-      # restore nor build them, so it stays nuget restore + msbuild. x86 is the
-      # only platform the solution defines.
-      - name: Build
-        run: |
-          nuget restore shadowsocks-windows.sln
-          msbuild shadowsocks-windows.sln -p:Configuration=Release -p:Platform=x86 -m
-
-      # Costura.Fody merges every dependency into Shadowsocks.exe, so the app is
-      # just that executable plus the satellite assemblies in the culture folders.
-      - name: Collect output
+      # Costura.Fody merges every dependency into Shadowsocks.exe, so the app ships
+      # as that executable plus the satellite assemblies in the culture folders --
+      # the loose DLLs dotnet publish also emits are already inside the exe.
+      - name: Publish
         shell: pwsh
         run: |
-          $out = 'shadowsocks-csharp/bin/x86/Release'
+          dotnet publish shadowsocks-csharp/shadowsocks-csharp.csproj -c Release -o out
           New-Item -ItemType Directory publish/Shadowsocks | Out-Null
-          Copy-Item "$out/Shadowsocks.exe" publish/Shadowsocks
-          Get-ChildItem $out -Directory | Copy-Item -Destination publish/Shadowsocks -Recurse
+          Copy-Item out/Shadowsocks.exe publish/Shadowsocks
+          Get-ChildItem out -Directory |
+            Where-Object { Test-Path "$($_.FullName)/Shadowsocks.resources.dll" } |
+            Copy-Item -Destination publish/Shadowsocks -Recurse
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
