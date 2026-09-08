@@ -21,9 +21,9 @@
   <ItemGroup>
     <!-- Replaces the VS-installed Microsoft.VisualStudio.QualityTools.UnitTestFramework,
          which has no NuGet equivalent and is invisible to dotnet test. -->
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="MSTest.TestAdapter" Version="3.6.1" />
-    <PackageReference Include="MSTest.TestFramework" Version="3.6.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.4.0" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.4.0" />
   </ItemGroup>
 
   <ItemGroup>

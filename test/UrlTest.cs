@@ -217,7 +217,7 @@ namespace Shadowsocks.Test
             var actual = Server.GetServers(testCase);
             if (actual.Count != expected.Count)
             {
-                Assert.Fail("Wrong number of configs. Expected: {0}. Actual: {1}", expected.Count, actual.Count);
+                Assert.Fail($"Wrong number of configs. Expected: {expected.Count}. Actual: {actual.Count}");
             }
 
             for (int i = 0; i < expected.Count; i++)

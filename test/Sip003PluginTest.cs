@@ -191,7 +191,7 @@ namespace Shadowsocks.Test
             plugin.StartIfNeeded();
 
             Process[] processes = Process.GetProcessesByName(pluginName);
-            Assert.AreEqual(processes.Length, 1);
+            Assert.AreEqual(1, processes.Length);
             Process p = processes[0];
 
 
