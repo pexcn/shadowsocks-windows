@@ -129,7 +129,16 @@ namespace Shadowsocks.Model
         /// </summary>
         public static void LoadConfiguration()
         {
-            LogManager.LoadConfiguration(NLOG_CONFIG_FILE_NAME);
+            try
+            {
+                // optional: false is required, otherwise NLog silently skips the reload
+                // when a configuration named NLog.config has already been loaded.
+                LogManager.Setup().LoadConfigurationFromFile(NLOG_CONFIG_FILE_NAME, optional: false);
+            }
+            catch (Exception ex)
+            {
+                NLog.Common.InternalLogger.Error(ex, "[shadowsocks] Failed to load NLog.config: {0}", NLOG_CONFIG_FILE_NAME);
+            }
         }
     }
 }

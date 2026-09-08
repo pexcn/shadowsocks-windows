@@ -13,6 +13,9 @@
          the UpdateChecker.Version constant, which the SDK cannot generate. -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+    <!-- The NuGet graph is redirect-heavy (System.Text.Json, System.Memory and
+         friends); let the SDK write app.config redirects that match it. -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Platforms>AnyCPU;x86</Platforms>
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
@@ -42,7 +45,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AvalonEdit" Version="6.0.1" />
+    <!-- ReactiveUI stays on 19.x: ReactiveUI.Fody, which weaves the [Reactive]
+         properties the view models use, was discontinued after 19.5.41; 20.x
+         replaced it with source generators. Splat and DynamicData are the
+         versions ReactiveUI 19.5.41 resolves to. -->
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
     <!-- Caseless and Costura are pure build-time weavers, referenced nowhere in
          the source, so they stay out of the assets that flow to consumers. -->
     <PackageReference Include="Caseless.Fody" Version="1.9.1">
@@ -56,38 +63,38 @@
     <PackageReference Include="Costura.Fody" Version="6.2.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="DynamicData" Version="7.1.1" />
+    <PackageReference Include="DynamicData" Version="8.3.27" />
     <PackageReference Include="Fody" Version="6.9.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="GlobalHotKey" Version="1.1.0" />
     <PackageReference Include="Google.Protobuf" Version="3.36.1" />
-    <PackageReference Include="MdXaml" Version="1.6.0" />
+    <PackageReference Include="MdXaml" Version="1.27.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="NLog" Version="4.7.6" />
-    <PackageReference Include="Pharmacist.Common" Version="2.0.5" />
-    <PackageReference Include="ReactiveUI" Version="12.1.5" />
-    <PackageReference Include="ReactiveUI.Events.WPF" Version="12.1.5" />
-    <PackageReference Include="ReactiveUI.Fody" Version="12.1.5" />
-    <PackageReference Include="ReactiveUI.Validation" Version="1.8.6" />
-    <PackageReference Include="ReactiveUI.WPF" Version="12.1.5" />
-    <PackageReference Include="Splat" Version="9.8.1" />
-    <PackageReference Include="System.Buffers" Version="4.5.1" />
+    <PackageReference Include="NLog" Version="6.2.0" />
+    <PackageReference Include="Pharmacist.Common" Version="2.0.8" />
+    <PackageReference Include="ReactiveUI" Version="19.5.41" />
+    <PackageReference Include="ReactiveUI.Events.WPF" Version="15.1.1" />
+    <PackageReference Include="ReactiveUI.Fody" Version="19.5.41" />
+    <PackageReference Include="ReactiveUI.Validation" Version="3.1.7" />
+    <PackageReference Include="ReactiveUI.WPF" Version="19.5.41" />
+    <PackageReference Include="Splat" Version="14.8.12" />
+    <PackageReference Include="System.Buffers" Version="4.6.1" />
     <PackageReference Include="System.IO" Version="4.3.0" />
-    <PackageReference Include="System.Memory" Version="4.5.4" />
+    <PackageReference Include="System.Memory" Version="4.6.3" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
-    <PackageReference Include="System.Reactive" Version="5.0.0" />
-    <PackageReference Include="System.Resources.Extensions" Version="4.7.1" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.6.1" />
+    <PackageReference Include="System.Reactive" Version="6.1.0" />
+    <PackageReference Include="System.Resources.Extensions" Version="10.0.11" />
     <PackageReference Include="System.Runtime" Version="4.3.1" />
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
     <PackageReference Include="System.Security.Cryptography.Algorithms" Version="4.3.1" />
     <PackageReference Include="System.Security.Cryptography.Encoding" Version="4.3.0" />
     <PackageReference Include="System.Security.Cryptography.Primitives" Version="4.3.0" />
     <PackageReference Include="System.Security.Cryptography.X509Certificates" Version="4.3.2" />
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
-    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
+    <PackageReference Include="System.ValueTuple" Version="4.6.2" />
     <PackageReference Include="WPFLocalizeExtension" Version="3.10.0" />
     <PackageReference Include="XAMLMarkupExtensions" Version="2.1.3" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
