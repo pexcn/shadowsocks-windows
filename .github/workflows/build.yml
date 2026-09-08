@@ -1,0 +1,58 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      # Legacy non-SDK projects with packages.config: the dotnet CLI can neither
+      # restore nor build them, so it stays nuget restore + msbuild. x86 is the
+      # only platform the solution defines.
+      - name: Build
+        run: |
+          nuget restore shadowsocks-windows.sln
+          msbuild shadowsocks-windows.sln -p:Configuration=Release -p:Platform=x86 -m
+
+      # Costura.Fody merges every dependency into Shadowsocks.exe, so the app is
+      # just that executable plus the satellite assemblies in the culture folders.
+      - name: Collect output
+        shell: pwsh
+        run: |
+          $out = 'shadowsocks-csharp/bin/x86/Release'
+          New-Item -ItemType Directory publish/Shadowsocks | Out-Null
+          Copy-Item "$out/Shadowsocks.exe" publish/Shadowsocks
+          Get-ChildItem $out -Directory | Copy-Item -Destination publish/Shadowsocks -Recurse
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Shadowsocks
+          path: publish/*
+          if-no-files-found: error
+
+      - name: Package release archive
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: Compress-Archive -Path publish/Shadowsocks -DestinationPath Shadowsocks.zip
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: Shadowsocks.zip

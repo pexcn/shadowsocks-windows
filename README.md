@@ -1,7 +1,7 @@
 <img src="shadowsocks-csharp/Resources/ssw128.png" alt="[logo]" width="48"/> Shadowsocks for Windows
 =======================
 
-[![Build Status]][Appveyor]
+[![Build Status]][Actions]
 
 [中文说明]
 
@@ -158,8 +158,8 @@ Sysproxy ()            https://github.com/Noisyfox/sysproxy
 
 
 
-[Appveyor]:     https://ci.appveyor.com/project/celeron533/shadowsocks-windows
-[Build Status]: https://ci.appveyor.com/api/projects/status/tfw57q6eecippsl5/branch/master?svg=true
+[Actions]:      https://github.com/pexcn/shadowsocks-windows/actions
+[Build Status]: https://github.com/pexcn/shadowsocks-windows/actions/workflows/build.yml/badge.svg
 [release page]: https://github.com/shadowsocks/shadowsocks-csharp/releases
 [GeoSite]:      https://github.com/v2fly/domain-list-community
 [Servers]:      https://github.com/shadowsocks/shadowsocks/wiki/Ports-and-Clients#linux--server-side
