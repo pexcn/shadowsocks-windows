@@ -84,9 +84,9 @@ namespace Shadowsocks.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        public static byte[] libsscrypto_dll {
+        public static byte[] libsscrypto64_dll {
             get {
-                object obj = ResourceManager.GetObject("libsscrypto_dll", resourceCulture);
+                object obj = ResourceManager.GetObject("libsscrypto64_dll", resourceCulture);
                 return ((byte[])(obj));
             }
         }

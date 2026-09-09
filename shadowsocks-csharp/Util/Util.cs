@@ -203,14 +203,12 @@ namespace Shadowsocks.Util
 
         public static RegistryKey OpenRegKey(string name, bool writable, RegistryHive hive = RegistryHive.CurrentUser)
         {
-            // we are building x86 binary for both x86 and x64, which will
-            // cause problem when opening registry key
-            // detect operating system instead of CPU
+            // x64-only build: there is no WOW64 redirection left to work
+            // around, the native view is the only one this process can see.
             if (string.IsNullOrEmpty(name)) throw new ArgumentException(nameof(name));
             try
             {
-                RegistryKey userKey = RegistryKey.OpenBaseKey(hive,
-                        Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32)
+                RegistryKey userKey = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64)
                     .OpenSubKey(name, writable);
                 return userKey;
             }

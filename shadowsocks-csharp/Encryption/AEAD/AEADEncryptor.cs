@@ -127,7 +127,7 @@ namespace Shadowsocks.Encryption.AEAD
         protected void IncrementNonce(bool isEncrypt)
         {
             lock (_nonceIncrementLock) {
-                Sodium.sodium_increment(isEncrypt ? _encNonce : _decNonce, nonceLen);
+                Sodium.sodium_increment(isEncrypt ? _encNonce : _decNonce, (UIntPtr)(uint) nonceLen);
             }
         }
 

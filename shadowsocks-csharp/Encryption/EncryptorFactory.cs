@@ -15,20 +15,17 @@ namespace Shadowsocks.Encryption
 
         static EncryptorFactory()
         {
-            var AEADMbedTLSEncryptorSupportedCiphers = AEADMbedTLSEncryptor.SupportedCiphers();
             var AEADSodiumEncryptorSupportedCiphers = AEADSodiumEncryptor.SupportedCiphers();
             var PlainEncryptorSupportedCiphers = PlainEncryptor.SupportedCiphers();
 
-            if (Sodium.AES256GCMAvailable)
+            if (!Sodium.AES256GCMAvailable)
             {
-                // prefer to aes-256-gcm in libsodium
-                AEADMbedTLSEncryptorSupportedCiphers.Remove("aes-256-gcm");
-            }
-            else
-            {
+                // libsodium refuses aes-256-gcm without AES-NI
                 AEADSodiumEncryptorSupportedCiphers.Remove("aes-256-gcm");
             }
 
+            // XXX: sequence matters, OpenSSL > Sodium. OpenSSL goes first for its
+            // assembly implementations: AES-NI, and the stitched AES-NI GCM module.
             foreach (string method in AEADOpenSSLEncryptor.SupportedCiphers())
             {
                 if (!_registeredEncryptors.ContainsKey(method))
@@ -39,12 +36,6 @@ namespace Shadowsocks.Encryption
             {
                 if (!_registeredEncryptors.ContainsKey(method))
                     _registeredEncryptors.Add(method, typeof(AEADSodiumEncryptor));
-            }
-
-            foreach (string method in AEADMbedTLSEncryptorSupportedCiphers)
-            {
-                if (!_registeredEncryptors.ContainsKey(method))
-                    _registeredEncryptors.Add(method, typeof(AEADMbedTLSEncryptor));
             }
 
             foreach (string method in PlainEncryptorSupportedCiphers)

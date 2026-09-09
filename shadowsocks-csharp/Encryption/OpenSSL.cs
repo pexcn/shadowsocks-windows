@@ -1,22 +1,15 @@
 ﻿using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
-using NLog;
-using Shadowsocks.Controller;
 using Shadowsocks.Encryption.Exception;
-using Shadowsocks.Properties;
-using Shadowsocks.Util;
 
 namespace Shadowsocks.Encryption
 {
     // XXX: only for OpenSSL 1.1.0 and higher
     public static class OpenSSL
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
-
-        private const string DLLNAME = "libsscrypto.dll";
+        private const string DLLNAME = LibSsCrypto.DLLNAME;
 
         public const int OPENSSL_ENCRYPT = 1;
         public const int OPENSSL_DECRYPT = 0;
@@ -27,19 +20,7 @@ namespace Shadowsocks.Encryption
 
         static OpenSSL()
         {
-            string dllPath = Utils.GetTempPath(DLLNAME);
-            try
-            {
-                FileManager.UncompressFile(dllPath, Resources.libsscrypto_dll);
-            }
-            catch (IOException)
-            {
-            }
-            catch (System.Exception e)
-            {
-                logger.LogUsefulException(e);
-            }
-            LoadLibrary(dllPath);
+            LibSsCrypto.EnsureLoaded();
         }
 
         public static IntPtr GetCipherInfo(string cipherName)
@@ -110,9 +91,6 @@ namespace Shadowsocks.Encryption
                 }
             }
         }
-
-        [DllImport("Kernel32.dll")]
-        private static extern IntPtr LoadLibrary(string path);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]

@@ -17,7 +17,7 @@ Download the latest release from [release page].
 
 ## Requirements
 
-.NET Framework 4.8 or higher, Microsoft [Visual C++ 2015 Redistributable] (x86) .
+.NET Framework 4.8 or higher, Microsoft [Visual C++ 2015 Redistributable] (x64) .
 
 ## Basics
 
