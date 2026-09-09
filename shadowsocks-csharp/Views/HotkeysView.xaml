@@ -13,11 +13,9 @@
     lex:ResxLocalizationProvider.DefaultAssembly="Shadowsocks"
     lex:ResxLocalizationProvider.DefaultDictionary="Strings"
     mc:Ignorable="d" 
-    d:DesignHeight="240" d:DesignWidth="280">
+    d:DesignHeight="180" d:DesignWidth="280">
     <Grid Margin="8">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -33,77 +31,57 @@
 
         <TextBlock Grid.Row="0" Grid.Column="0"
                    Margin="4"
-                   Text="{lex:Loc ToggleSystemProxy}"/>
-        <TextBox x:Name="systemProxyTextBox"
+                   Text="{lex:Loc AllowClientsFromLAN}"/>
+        <TextBox x:Name="allowLanTextBox"
                  Grid.Row="0" Grid.Column="1"
                  Margin="4" IsReadOnly="True" />
-        <TextBlock x:Name="systemProxyStatusTextBlock"
+        <TextBlock x:Name="allowLanStatusTextBlock"
                  Grid.Row="0" Grid.Column="2"
                  Margin="4" />
 
         <TextBlock Grid.Row="1" Grid.Column="0"
                    Margin="4"
-                   Text="{lex:Loc ToggleProxyMode}"/>
-        <TextBox x:Name="proxyModeTextBox"
+                   Text="{lex:Loc OpenLogsWindow}"/>
+        <TextBox x:Name="openLogsTextBox"
                  Grid.Row="1" Grid.Column="1"
                  Margin="4" IsReadOnly="True" />
-        <TextBlock x:Name="proxyModeStatusTextBlock"
+        <TextBlock x:Name="openLogsStatusTextBlock"
                  Grid.Row="1" Grid.Column="2"
                  Margin="4" />
 
         <TextBlock Grid.Row="2" Grid.Column="0"
                    Margin="4"
-                   Text="{lex:Loc AllowClientsFromLAN}"/>
-        <TextBox x:Name="allowLanTextBox"
+                   Text="{lex:Loc SwitchToPreviousServer}"/>
+        <TextBox x:Name="switchPrevTextBox"
                  Grid.Row="2" Grid.Column="1"
                  Margin="4" IsReadOnly="True" />
-        <TextBlock x:Name="allowLanStatusTextBlock"
+        <TextBlock x:Name="switchPrevStatusTextBlock"
                  Grid.Row="2" Grid.Column="2"
                  Margin="4" />
 
         <TextBlock Grid.Row="3" Grid.Column="0"
                    Margin="4"
-                   Text="{lex:Loc OpenLogsWindow}"/>
-        <TextBox x:Name="openLogsTextBox"
+                   Text="{lex:Loc SwitchToNextServer}"/>
+        <TextBox x:Name="switchNextTextBox"
                  Grid.Row="3" Grid.Column="1"
                  Margin="4" IsReadOnly="True" />
-        <TextBlock x:Name="openLogsStatusTextBlock"
+        <TextBlock x:Name="switchNextStatusTextBlock"
                  Grid.Row="3" Grid.Column="2"
                  Margin="4" />
 
-        <TextBlock Grid.Row="4" Grid.Column="0"
-                   Margin="4"
-                   Text="{lex:Loc SwitchToPreviousServer}"/>
-        <TextBox x:Name="switchPrevTextBox"
-                 Grid.Row="4" Grid.Column="1"
-                 Margin="4" IsReadOnly="True" />
-        <TextBlock x:Name="switchPrevStatusTextBlock"
-                 Grid.Row="4" Grid.Column="2"
-                 Margin="4" />
-
-        <TextBlock Grid.Row="5" Grid.Column="0"
-                   Margin="4"
-                   Text="{lex:Loc SwitchToNextServer}"/>
-        <TextBox x:Name="switchNextTextBox"
-                 Grid.Row="5" Grid.Column="1"
-                 Margin="4" IsReadOnly="True" />
-        <TextBlock x:Name="switchNextStatusTextBlock"
-                 Grid.Row="5" Grid.Column="2"
-                 Margin="4" />
-
-        <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal">
+        <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Orientation="Horizontal">
             <CheckBox x:Name="registerAtStartupCheckBox" Margin="4" VerticalAlignment="Center"/>
             <TextBlock Margin="4" Text="{lex:Loc RegisterHotkeysAtStartup}"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="7"
+        <StackPanel Grid.Row="5"
                     Grid.ColumnSpan="3"
                     Orientation="Horizontal"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Bottom">
             <Button x:Name="registerAllButton" Margin="4" MinWidth="75" Content="{lex:Loc}"/>
         </StackPanel>
-        <StackPanel Grid.Row="7"
+        <StackPanel Grid.Row="5"
                     Grid.ColumnSpan="3"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"

@@ -123,12 +123,6 @@ namespace Shadowsocks
             // https://stackoverflow.com/questions/14668640/wpf-localize-extension-translate-window-at-run-time
             LocalizeDictionary.Instance.Culture = Thread.CurrentThread.CurrentCulture;
 
-#if DEBUG
-            // truncate privoxy log file while debugging
-            string privoxyLogFilename = Utils.GetTempPath("privoxy.log");
-            if (File.Exists(privoxyLogFilename))
-                using (new FileStream(privoxyLogFilename, FileMode.Truncate)) { }
-#endif
             MainController = new ShadowsocksController();
             MenuController = new MenuViewController(MainController);
 

@@ -156,12 +156,6 @@
   <data name="registerAllButton_Content" xml:space="preserve">
     <value>全部注册</value>
   </data>
-  <data name="ToggleSystemProxy" xml:space="preserve">
-    <value>切换系统代理</value>
-  </data>
-  <data name="ToggleProxyMode" xml:space="preserve">
-    <value>切换代理模式</value>
-  </data>
   <data name="AllowClientsFromLAN" xml:space="preserve">
     <value>允许内网客户端连接</value>
   </data>

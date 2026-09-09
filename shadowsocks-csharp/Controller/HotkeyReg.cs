@@ -18,9 +18,7 @@ namespace Shadowsocks.Controller
                 return;
 
             // if any of the hotkey reg fail, undo everything
-            if (RegHotkeyFromString(hotkeyConfig.SwitchSystemProxy, "SwitchSystemProxyCallback")
-                && RegHotkeyFromString(hotkeyConfig.SwitchSystemProxyMode, "SwitchSystemProxyModeCallback")
-                && RegHotkeyFromString(hotkeyConfig.SwitchAllowLan, "SwitchAllowLanCallback")
+            if (RegHotkeyFromString(hotkeyConfig.SwitchAllowLan, "SwitchAllowLanCallback")
                 && RegHotkeyFromString(hotkeyConfig.ShowLogs, "ShowLogsCallback")
                 && RegHotkeyFromString(hotkeyConfig.ServerMoveUp, "ServerMoveUpCallback")
                 && RegHotkeyFromString(hotkeyConfig.ServerMoveDown, "ServerMoveDownCallback")
@@ -30,8 +28,6 @@ namespace Shadowsocks.Controller
             }
             else
             {
-                RegHotkeyFromString("", "SwitchSystemProxyCallback");
-                RegHotkeyFromString("", "SwitchSystemProxyModeCallback");
                 RegHotkeyFromString("", "SwitchAllowLanCallback");
                 RegHotkeyFromString("", "ShowLogsCallback");
                 RegHotkeyFromString("", "ServerMoveUpCallback");

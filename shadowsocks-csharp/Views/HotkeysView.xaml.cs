@@ -24,74 +24,44 @@ namespace Shadowsocks.Views
             ViewModel = new HotkeysViewModel();
             this.WhenActivated(disposables =>
             {
-                systemProxyTextBox
+                allowLanTextBox
                     .Events().KeyDown
                     .Subscribe(keyEventArgs => ViewModel.RecordKeyDown(0, keyEventArgs))
                     .DisposeWith(disposables);
 
-                systemProxyTextBox
+                allowLanTextBox
                     .Events().KeyUp
                     .Subscribe(keyEventArgs => ViewModel.FinishOnKeyUp(0, keyEventArgs))
                     .DisposeWith(disposables);
 
-                proxyModeTextBox
+                openLogsTextBox
                     .Events().KeyDown
                     .Subscribe(keyEventArgs => ViewModel.RecordKeyDown(1, keyEventArgs))
                     .DisposeWith(disposables);
 
-                proxyModeTextBox
+                openLogsTextBox
                     .Events().KeyUp
                     .Subscribe(keyEventArgs => ViewModel.FinishOnKeyUp(1, keyEventArgs))
                     .DisposeWith(disposables);
 
-                allowLanTextBox
+                switchPrevTextBox
                     .Events().KeyDown
                     .Subscribe(keyEventArgs => ViewModel.RecordKeyDown(2, keyEventArgs))
                     .DisposeWith(disposables);
 
-                allowLanTextBox
+                switchPrevTextBox
                     .Events().KeyUp
                     .Subscribe(keyEventArgs => ViewModel.FinishOnKeyUp(2, keyEventArgs))
                     .DisposeWith(disposables);
 
-                openLogsTextBox
+                switchNextTextBox
                     .Events().KeyDown
                     .Subscribe(keyEventArgs => ViewModel.RecordKeyDown(3, keyEventArgs))
                     .DisposeWith(disposables);
 
-                openLogsTextBox
+                switchNextTextBox
                     .Events().KeyUp
                     .Subscribe(keyEventArgs => ViewModel.FinishOnKeyUp(3, keyEventArgs))
-                    .DisposeWith(disposables);
-
-                switchPrevTextBox
-                    .Events().KeyDown
-                    .Subscribe(keyEventArgs => ViewModel.RecordKeyDown(4, keyEventArgs))
-                    .DisposeWith(disposables);
-
-                switchPrevTextBox
-                    .Events().KeyUp
-                    .Subscribe(keyEventArgs => ViewModel.FinishOnKeyUp(4, keyEventArgs))
-                    .DisposeWith(disposables);
-
-                switchNextTextBox
-                    .Events().KeyDown
-                    .Subscribe(keyEventArgs => ViewModel.RecordKeyDown(5, keyEventArgs))
-                    .DisposeWith(disposables);
-
-                switchNextTextBox
-                    .Events().KeyUp
-                    .Subscribe(keyEventArgs => ViewModel.FinishOnKeyUp(5, keyEventArgs))
-                    .DisposeWith(disposables);
-
-                this.OneWayBind(ViewModel,
-                    viewModel => viewModel.HotkeySystemProxy,
-                    view => view.systemProxyTextBox.Text)
-                    .DisposeWith(disposables);
-
-                this.OneWayBind(ViewModel,
-                    viewModel => viewModel.HotkeyProxyMode,
-                    view => view.proxyModeTextBox.Text)
                     .DisposeWith(disposables);
 
                 this.OneWayBind(ViewModel,
@@ -117,16 +87,6 @@ namespace Shadowsocks.Views
                 this.Bind(ViewModel,
                     viewModel => viewModel.RegisterAtStartup,
                     view => view.registerAtStartupCheckBox.IsChecked)
-                    .DisposeWith(disposables);
-
-                this.OneWayBind(ViewModel,
-                    viewModel => viewModel.HotkeySystemProxyStatus,
-                    view => view.systemProxyStatusTextBlock.Text)
-                    .DisposeWith(disposables);
-
-                this.OneWayBind(ViewModel,
-                    viewModel => viewModel.HotkeyProxyModeStatus,
-                    view => view.proxyModeStatusTextBlock.Text)
                     .DisposeWith(disposables);
 
                 this.OneWayBind(ViewModel,

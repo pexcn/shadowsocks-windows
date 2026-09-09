@@ -138,12 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>확인</value>
   </data>
-  <data name="ToggleSystemProxy" xml:space="preserve">
-    <value>시스템 프록시 전환</value>
-  </data>
-  <data name="ToggleProxyMode" xml:space="preserve">
-    <value>시스템 프록시 모드 전환</value>
-  </data>
   <data name="AllowClientsFromLAN" xml:space="preserve">
     <value>LAN으로부터 클라이언트 허용</value>
   </data>

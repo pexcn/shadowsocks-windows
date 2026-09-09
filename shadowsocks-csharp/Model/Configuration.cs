@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Windows;
 using Newtonsoft.Json;
 using NLog;
@@ -25,18 +24,11 @@ namespace Shadowsocks.Model
         // when strategy is set, index is ignored
         public string strategy;
         public int index;
-        public bool global;
-        public bool enabled;
         public bool shareOverLan;
         public bool firstRun;
         public int localPort;
         public bool portableMode;
         public bool showPluginOutput;
-        public string pacUrl;
-
-        public bool useOnlinePac;
-        public bool secureLocalPac; // enable secret for PAC server
-        public bool regeneratePacOnUpdate; // regenerate pac.txt on version update
         public bool autoCheckUpdate;
         public bool checkPreRelease;
         public string skippedUpdateVersion; // skip the update with this version number
@@ -45,11 +37,6 @@ namespace Shadowsocks.Model
         // hidden options
         public bool isIPv6Enabled; // for experimental ipv6 support
         public bool generateLegacyUrl; // for pre-sip002 url compatibility
-        public string geositeUrl; // for custom geosite source (and rule group)
-        public string geositeSha256sumUrl; // optional custom sha256sum url, leave empty to disable checksum verification for your custom geosite source
-        public List<string> geositeDirectGroups;  // groups of domains that we connect without the proxy
-        public List<string> geositeProxiedGroups; // groups of domains that we connect via the proxy
-        public bool geositePreferDirect; // a.k.a blacklist mode
         public string userAgent;
 
         //public NLogConfig.LogLevel logLevel;
@@ -65,17 +52,11 @@ namespace Shadowsocks.Model
             version = UpdateChecker.Version;
             strategy = "";
             index = 0;
-            global = false;
-            enabled = false;
             shareOverLan = false;
             firstRun = true;
             localPort = 1080;
             portableMode = true;
             showPluginOutput = false;
-            pacUrl = "";
-            useOnlinePac = false;
-            secureLocalPac = true;
-            regeneratePacOnUpdate = true;
             autoCheckUpdate = false;
             checkPreRelease = false;
             skippedUpdateVersion = "";
@@ -84,19 +65,6 @@ namespace Shadowsocks.Model
             // hidden options
             isIPv6Enabled = false;
             generateLegacyUrl = false;
-            geositeUrl = "";
-            geositeSha256sumUrl = "";
-            geositeDirectGroups = new List<string>()
-            {
-                "private",
-                "cn",
-                "geolocation-!cn@cn",
-            };
-            geositeProxiedGroups = new List<string>()
-            {
-                "geolocation-!cn",
-            };
-            geositePreferDirect = false;
             userAgent = "ShadowsocksWindows/$version";
 
             logViewer = new LogViewerConfig();
@@ -132,14 +100,6 @@ namespace Shadowsocks.Model
             else
                 return GetDefaultServer();
         }
-
-        public WebProxy WebProxy => enabled
-            ? new WebProxy(
-                    isIPv6Enabled
-                    ? $"[{IPAddress.IPv6Loopback}]"
-                    : IPAddress.Loopback.ToString(),
-                    localPort)
-            : null;
 
         /// <summary>
         /// Used by multiple forms to validate a server.
@@ -188,13 +148,6 @@ namespace Shadowsocks.Model
         /// <param name="config">A reference of Configuration object.</param>
         public static void Process(ref Configuration config)
         {
-            // Verify if the configured geosite groups exist.
-            // Reset to default if ANY one of the configured group doesn't exist.
-            if (!ValidateGeositeGroupList(config.geositeDirectGroups))
-                ResetGeositeDirectGroup(ref config.geositeDirectGroups);
-            if (!ValidateGeositeGroupList(config.geositeProxiedGroups))
-                ResetGeositeProxiedGroup(ref config.geositeProxiedGroups);
-
             // Mark the first run of a new version.
             var appVersion = new Version(UpdateChecker.Version);
             var configVersion = new Version(config.version);
@@ -284,44 +237,6 @@ namespace Shadowsocks.Model
             return ret;
         }
 
-        /// <summary>
-        /// Validates if the groups in the list are all valid.
-        /// </summary>
-        /// <param name="groups">The list of groups to validate.</param>
-        /// <returns>
-        /// True if all groups are valid.
-        /// False if any one of them is invalid.
-        /// </returns>
-        public static bool ValidateGeositeGroupList(List<string> groups)
-        {
-            foreach (var geositeGroup in groups)
-                if (!GeositeUpdater.CheckGeositeGroup(geositeGroup)) // found invalid group
-                {
-#if DEBUG
-                    logger.Debug($"Available groups:");
-                    foreach (var group in GeositeUpdater.Geosites.Keys)
-                        logger.Debug($"{group}");
-#endif
-                    logger.Warn($"The Geosite group {geositeGroup} doesn't exist. Resetting to default groups.");
-                    return false;
-                }
-            return true;
-        }
-
-        public static void ResetGeositeDirectGroup(ref List<string> geositeDirectGroups)
-        {
-            geositeDirectGroups.Clear();
-            geositeDirectGroups.Add("private");
-            geositeDirectGroups.Add("cn");
-            geositeDirectGroups.Add("geolocation-!cn@cn");
-        }
-
-        public static void ResetGeositeProxiedGroup(ref List<string> geositeProxiedGroups)
-        {
-            geositeProxiedGroups.Clear();
-            geositeProxiedGroups.Add("geolocation-!cn");
-        }
-
         public static void ResetUserAgent(Configuration config)
         {
             config.userAgent = "ShadowsocksWindows/$version";
@@ -353,13 +268,6 @@ namespace Shadowsocks.Model
         {
             if (port <= 0 || port > 65535)
                 throw new ArgumentException(I18N.GetString("Port out of range"));
-        }
-
-        public static void CheckLocalPort(int port)
-        {
-            CheckPort(port);
-            if (port == 8123)
-                throw new ArgumentException(I18N.GetString("Port can't be 8123"));
         }
 
         private static void CheckPassword(string password)

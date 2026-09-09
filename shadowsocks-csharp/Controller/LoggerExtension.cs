@@ -5,7 +5,6 @@ using System.Net.Sockets;
 using System.Net;
 using System.Diagnostics;
 using System.Text;
-using Shadowsocks.Util.SystemProxy;
 
 namespace NLog
 {
@@ -92,22 +91,6 @@ namespace NLog
                 if ((uint)ex.ErrorCode != 0x80004005)
                 {
                     logger.Warn(e);
-                }
-            }
-            else if (e is ProxyException)
-            {
-                var ex = (ProxyException)e;
-                switch (ex.Type)
-                {
-                    case ProxyExceptionType.FailToRun:
-                    case ProxyExceptionType.QueryReturnMalformed:
-                    case ProxyExceptionType.SysproxyExitError:
-                        logger.Error($"sysproxy - {ex.Type.ToString()}:{ex.Message}");
-                        break;
-                    case ProxyExceptionType.QueryReturnEmpty:
-                    case ProxyExceptionType.Unspecific:
-                        logger.Error($"sysproxy - {ex.Type.ToString()}");
-                        break;
                 }
             }
             else

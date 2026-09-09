@@ -17,16 +17,12 @@ namespace Shadowsocks.ViewModels
             _controller = Program.MainController;
             _menuViewController = Program.MenuController;
             
-            HotkeySystemProxy = _config.hotkey.SwitchSystemProxy;
-            HotkeyProxyMode = _config.hotkey.SwitchSystemProxyMode;
             HotkeyAllowLan = _config.hotkey.SwitchAllowLan;
             HotkeyOpenLogs = _config.hotkey.ShowLogs;
             HotkeySwitchPrev = _config.hotkey.ServerMoveUp;
             HotkeySwitchNext = _config.hotkey.ServerMoveDown;
             RegisterAtStartup = _config.hotkey.RegHotkeysAtStartup;
 
-            HotkeySystemProxyStatus = "✔";
-            HotkeyProxyModeStatus = "✔";
             HotkeyAllowLanStatus = "✔";
             HotkeyOpenLogsStatus = "✔";
             HotkeySwitchPrevStatus = "✔";
@@ -46,12 +42,6 @@ namespace Shadowsocks.ViewModels
         public ReactiveCommand<Unit, Unit> Cancel { get; }
 
         [Reactive]
-        public string HotkeySystemProxy { get; set; }
-
-        [Reactive]
-        public string HotkeyProxyMode { get; set; }
-
-        [Reactive]
         public string HotkeyAllowLan { get; set; }
 
         [Reactive]
@@ -65,12 +55,6 @@ namespace Shadowsocks.ViewModels
 
         [Reactive]
         public bool RegisterAtStartup { get; set; }
-
-        [Reactive]
-        public string HotkeySystemProxyStatus { get; set; }
-
-        [Reactive]
-        public string HotkeyProxyModeStatus { get; set; }
 
         [Reactive]
         public string HotkeyAllowLanStatus { get; set; }
@@ -103,21 +87,15 @@ namespace Shadowsocks.ViewModels
             switch (hotkeyIndex)
             {
                 case 0:
-                    HotkeySystemProxy = recordedKeyStringBuilder.ToString();
-                    break;
-                case 1:
-                    HotkeyProxyMode = recordedKeyStringBuilder.ToString();
-                    break;
-                case 2:
                     HotkeyAllowLan = recordedKeyStringBuilder.ToString();
                     break;
-                case 3:
+                case 1:
                     HotkeyOpenLogs = recordedKeyStringBuilder.ToString();
                     break;
-                case 4:
+                case 2:
                     HotkeySwitchPrev = recordedKeyStringBuilder.ToString();
                     break;
-                case 5:
+                case 3:
                     HotkeySwitchNext = recordedKeyStringBuilder.ToString();
                     break;
             }
@@ -128,26 +106,18 @@ namespace Shadowsocks.ViewModels
             switch (hotkeyIndex)
             {
                 case 0:
-                    if (HotkeySystemProxy.EndsWith("+"))
-                        HotkeySystemProxy = "";
-                    break;
-                case 1:
-                    if (HotkeyProxyMode.EndsWith("+"))
-                        HotkeyProxyMode = "";
-                    break;
-                case 2:
                     if (HotkeyAllowLan.EndsWith("+"))
                         HotkeyAllowLan = "";
                     break;
-                case 3:
+                case 1:
                     if (HotkeyOpenLogs.EndsWith("+"))
                         HotkeyOpenLogs = "";
                     break;
-                case 4:
+                case 2:
                     if (HotkeySwitchPrev.EndsWith("+"))
                         HotkeySwitchPrev = "";
                     break;
-                case 5:
+                case 3:
                     if (HotkeySwitchNext.EndsWith("+"))
                         HotkeySwitchNext = "";
                     break;
@@ -156,16 +126,12 @@ namespace Shadowsocks.ViewModels
 
         private void RegisterAllAndUpdateStatus(bool save = false)
         {
-            HotkeySystemProxyStatus = HotkeyReg.RegHotkeyFromString(HotkeySystemProxy, "SwitchSystemProxyCallback") ? "✔" : "❌";
-            HotkeyProxyModeStatus = HotkeyReg.RegHotkeyFromString(HotkeyProxyMode, "SwitchSystemProxyModeCallback") ? "✔" : "❌";
             HotkeyAllowLanStatus = HotkeyReg.RegHotkeyFromString(HotkeyAllowLan, "SwitchAllowLanCallback") ? "✔" : "❌";
             HotkeyOpenLogsStatus = HotkeyReg.RegHotkeyFromString(HotkeyOpenLogs, "ShowLogsCallback") ? "✔" : "❌";
             HotkeySwitchPrevStatus = HotkeyReg.RegHotkeyFromString(HotkeySwitchPrev, "ServerMoveUpCallback") ? "✔" : "❌";
             HotkeySwitchNextStatus = HotkeyReg.RegHotkeyFromString(HotkeySwitchNext, "ServerMoveDownCallback") ? "✔" : "❌";
 
-            if (HotkeySystemProxyStatus == "✔" &&
-                HotkeyProxyModeStatus == "✔" &&
-                HotkeyAllowLanStatus == "✔" &&
+            if (HotkeyAllowLanStatus == "✔" &&
                 HotkeyOpenLogsStatus == "✔" &&
                 HotkeySwitchPrevStatus == "✔" &&
                 HotkeySwitchNextStatus == "✔" && save)
@@ -177,8 +143,6 @@ namespace Shadowsocks.ViewModels
 
         private HotkeyConfig GetHotkeyConfig => new HotkeyConfig()
         {
-            SwitchSystemProxy = HotkeySystemProxy,
-            SwitchSystemProxyMode = HotkeyProxyMode,
             SwitchAllowLan = HotkeyAllowLan,
             ShowLogs = HotkeyOpenLogs,
             ServerMoveUp = HotkeySwitchPrev,

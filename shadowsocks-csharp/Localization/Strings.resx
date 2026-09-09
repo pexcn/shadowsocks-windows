@@ -159,12 +159,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>_OK</value>
   </data>
-  <data name="ToggleSystemProxy" xml:space="preserve">
-    <value>Toggle system proxy</value>
-  </data>
-  <data name="ToggleProxyMode" xml:space="preserve">
-    <value>Toggle proxy mode</value>
-  </data>
   <data name="AllowClientsFromLAN" xml:space="preserve">
     <value>Allow clients from LAN</value>
   </data>

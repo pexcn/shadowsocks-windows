@@ -349,24 +349,6 @@ namespace Shadowsocks.Localization {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Toggle proxy mode.
-        /// </summary>
-        internal static string ToggleProxyMode {
-            get {
-                return ResourceManager.GetString("ToggleProxyMode", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Toggle system proxy.
-        /// </summary>
-        internal static string ToggleSystemProxy {
-            get {
-                return ResourceManager.GetString("ToggleSystemProxy", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Type.
         /// </summary>
         internal static string Type {

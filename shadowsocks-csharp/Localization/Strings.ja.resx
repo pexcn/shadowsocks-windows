@@ -138,12 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>OK</value>
   </data>
-  <data name="ToggleSystemProxy" xml:space="preserve">
-    <value>システム プロキシの状態を切り替える</value>
-  </data>
-  <data name="ToggleProxyMode" xml:space="preserve">
-    <value>プロキシモードを切り替える</value>
-  </data>
   <data name="AllowClientsFromLAN" xml:space="preserve">
     <value>LAN からのアクセスの許可を切り替える</value>
   </data>

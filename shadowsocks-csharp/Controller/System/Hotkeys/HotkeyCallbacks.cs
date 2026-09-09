@@ -44,19 +44,6 @@ namespace Shadowsocks.Controller.Hotkeys
 
         #region Callbacks
 
-        private void SwitchSystemProxyCallback()
-        {
-            bool enabled = _controller.GetCurrentConfiguration().enabled;
-            _controller.ToggleEnable(!enabled);
-        }
-
-        private void SwitchSystemProxyModeCallback()
-        {
-            var config = _controller.GetCurrentConfiguration();
-            if (config.enabled)
-                _controller.ToggleGlobal(!config.global);
-        }
-
         private void SwitchAllowLanCallback()
         {
             var status = _controller.GetCurrentConfiguration().shareOverLan;

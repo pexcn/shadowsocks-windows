@@ -7,13 +7,9 @@
 
 ## Features
 
-1. System proxy configuration
-2. PAC mode and global mode
-3. [GeoSite] and user rules
-4. Supports HTTP proxy
-5. Supports server auto switching
-6. Supports UDP relay (see Usage)
-7. Supports plugins
+1. Supports server auto switching
+2. Supports UDP relay (see Usage)
+3. Supports plugins
 
 ## Downloads
 
@@ -27,36 +23,8 @@ Download the latest release from [release page].
 
 1. Find Shadowsocks icon in the notification tray
 2. You can add multiple servers in servers menu
-3. Select `Enable System Proxy` menu to enable system proxy. Please disable other
-proxy addons in your browser, or set them to use system proxy
-4. You can also configure your browser proxy manually if you don't want to enable
-system proxy. Set Socks5 or HTTP proxy to 127.0.0.1:1080. You can change this
-port in `Servers -> Edit Servers`
-
-## PAC
-
-- The PAC rules are generated from the geosite database in [v2fly/domain-list-community](https://github.com/v2fly/domain-list-community).
-- Generation modes: whitelist mode and blacklist mode.
-- Domain groups: `geositeDirectGroups` and `geositeProxiedGroups`.
-    - `geositeDirectGroups` is initialized with `cn` and `geolocation-!cn@cn`.
-    - `geositeProxiedGroups` is initialized with `geolocation-!cn`.
-- To switch between different modes, modify the `geositePreferDirect` property in `gui-config.json`
-    - When `geositePreferDirect` is false (default), PAC works in whitelist mode. Exception rules are generated from `geositeDirectGroups`. Unmatched domains goes through the proxy.
-    - When `geositePreferDirect` is true, PAC works in blacklist mode. Blocking rules are generated from `geositeProxiedGroups`. Exception rules are generated from `geositeDirectGroups`. Unmatched domains are connected to directly.
-- Starting from 4.3.0.0, shadowsocks-windows defaults to whitelist mode with Chinese domains excluded from connecting via the proxy.
-- The new default values make sure that:
-    - When in whitelist mode, Chinese domains, including non-Chinese companies' Chinese CDNs, are connected to directly.
-    - When in blacklist mode, only non-Chinese domains goes through the proxy. Chinese domains, as well as non-Chinese companies' Chinese CDNs, are connected to directly.
-
-### User-defined rules
-
-- To define your own PAC rules, it's recommended to use the `user-rule.txt` file.
-- You can also modify `pac.txt` directly. But your modifications won't persist after updating geosite from the upstream.
-
-For Windows10 Store and related applications, please execute the following command under Admin privilege:
-```
-netsh winhttp import proxy source=ie
-```
+3. Configure your browser or application to use the local SOCKS5 proxy at
+127.0.0.1:1080. You can change this port in `Servers -> Edit Servers`
 
 ## Server Auto Switching
 
@@ -152,8 +120,6 @@ WPFLocalizationExtension (MS-PL) https://github.com/XAMLMarkupExtensions/WPFLoca
 ZXing.Net (Apache 2.0)           https://github.com/micjahn/ZXing.Net
 
 libsscrypto (GPLv2)    https://github.com/shadowsocks/libsscrypto
-Privoxy (GPLv2)        https://www.privoxy.org
-Sysproxy ()            https://github.com/Noisyfox/sysproxy
 ```
 
 
@@ -161,7 +127,6 @@ Sysproxy ()            https://github.com/Noisyfox/sysproxy
 [Actions]:      https://github.com/pexcn/shadowsocks-windows/actions
 [Build Status]: https://github.com/pexcn/shadowsocks-windows/actions/workflows/build.yml/badge.svg
 [release page]: https://github.com/shadowsocks/shadowsocks-csharp/releases
-[GeoSite]:      https://github.com/v2fly/domain-list-community
 [Servers]:      https://github.com/shadowsocks/shadowsocks/wiki/Ports-and-Clients#linux--server-side
 [中文说明]:     https://github.com/shadowsocks/shadowsocks-windows/wiki/Shadowsocks-Windows-%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E
 [Visual C++ 2015 Redistributable]:     https://www.microsoft.com/en-us/download/details.aspx?id=53840

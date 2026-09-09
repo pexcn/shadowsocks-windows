@@ -6,10 +6,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using System.Windows.Forms;
 using NLog;
 using Shadowsocks.Controller.Service;
@@ -33,11 +31,8 @@ namespace Shadowsocks.Controller
         private Thread _trafficThread;
 
         private Listener _listener;
-        private PACDaemon _pacDaemon;
-        private PACServer _pacServer;
         private Configuration _config;
         private StrategyManager _strategyManager;
-        private PrivoxyRunner privoxyRunner;
         private readonly ConcurrentDictionary<Server, Sip003Plugin> _pluginsByServer;
 
         private long _inboundCounter = 0;
@@ -47,11 +42,6 @@ namespace Shadowsocks.Controller
         public Queue<TrafficPerSecond> trafficPerSecondQueue;
 
         private bool stopped = false;
-
-        public class PathEventArgs : EventArgs
-        {
-            public string Path;
-        }
 
         public class UpdatedEventArgs : EventArgs
         {
@@ -68,20 +58,10 @@ namespace Shadowsocks.Controller
         }
 
         public event EventHandler ConfigChanged;
-        public event EventHandler EnableStatusChanged;
-        public event EventHandler EnableGlobalChanged;
         public event EventHandler ShareOverLANStatusChanged;
         public event EventHandler VerboseLoggingStatusChanged;
         public event EventHandler ShowPluginOutputChanged;
         public event EventHandler TrafficChanged;
-
-        // when user clicked Edit PAC, and PAC file has already created
-        public event EventHandler<PathEventArgs> PACFileReadyToOpen;
-        public event EventHandler<PathEventArgs> UserRuleFileReadyToOpen;
-
-        public event EventHandler<GeositeResultEventArgs> UpdatePACFromGeositeCompleted;
-
-        public event ErrorEventHandler UpdatePACFromGeositeError;
 
         public event ErrorEventHandler Errored;
 
@@ -99,14 +79,7 @@ namespace Shadowsocks.Controller
             _pluginsByServer = new ConcurrentDictionary<Server, Sip003Plugin>();
             StartTrafficStatistics(61);
 
-            ProgramUpdated += (o, e) =>
-            {
-                // version update precedures
-                if (e.OldVersion == "4.3.0.0" || e.OldVersion == "4.3.1.0")
-                    _config.geositeDirectGroups.Add("private");
-
-                logger.Info($"Updated from {e.OldVersion} to {e.NewVersion}");
-            };
+            ProgramUpdated += (o, e) => logger.Info($"Updated from {e.OldVersion} to {e.NewVersion}");
         }
 
         #region Basic
@@ -120,17 +93,6 @@ namespace Shadowsocks.Controller
                     OldVersion = _config.version,
                     NewVersion = UpdateChecker.Version,
                 });
-                // delete pac.txt when regeneratePacOnUpdate is true
-                if (_config.regeneratePacOnUpdate)
-                    try
-                    {
-                        File.Delete(PACDaemon.PAC_FILE);
-                        logger.Info("Deleted pac.txt from previous version.");
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogUsefulException(e);
-                    }
                 // finish up first run of new version
                 _config.firstRunOnNewVersion = false;
                 _config.version = UpdateChecker.Version;
@@ -153,14 +115,6 @@ namespace Shadowsocks.Controller
                 _listener.Stop();
             }
             StopPlugins();
-            if (privoxyRunner != null)
-            {
-                privoxyRunner.Stop();
-            }
-            if (_config.enabled)
-            {
-                SystemProxy.Update(_config, true, null);
-            }
             Encryption.RNG.Close();
         }
 
@@ -188,33 +142,15 @@ namespace Shadowsocks.Controller
                 httpClient.DefaultRequestHeaders.Add("User-Agent", _config.userAgentString);
             }
 
-            privoxyRunner = privoxyRunner ?? new PrivoxyRunner();
-
-            _pacDaemon = _pacDaemon ?? new PACDaemon(_config);
-            _pacDaemon.PACFileChanged += PacDaemon_PACFileChanged;
-            _pacDaemon.UserRuleFileChanged += PacDaemon_UserRuleFileChanged;
-            _pacServer = _pacServer ?? new PACServer(_pacDaemon);
-            _pacServer.UpdatePACURL(_config); // So PACServer works when system proxy disabled.
-
-            GeositeUpdater.ResetEvent();
-            GeositeUpdater.UpdateCompleted += PacServer_PACUpdateCompleted;
-            GeositeUpdater.Error += PacServer_PACUpdateError;
-
             _listener?.Stop();
             StopPlugins();
 
-            // don't put PrivoxyRunner.Start() before pacServer.Stop()
-            // or bind will fail when switching bind address from 0.0.0.0 to 127.0.0.1
-            // though UseShellExecute is set to true now
-            // http://stackoverflow.com/questions/10235093/socket-doesnt-close-after-application-exits-if-a-launched-process-is-open
-            privoxyRunner.Stop();
             try
             {
                 var strategy = GetCurrentStrategy();
                 strategy?.ReloadServers();
 
                 StartPlugin();
-                privoxyRunner.Start(_config);
 
                 TCPRelay tcpRelay = new TCPRelay(this, _config);
                 tcpRelay.OnInbound += UpdateInboundCounter;
@@ -225,9 +161,7 @@ namespace Shadowsocks.Controller
                 List<Listener.IService> services = new List<Listener.IService>
                 {
                     tcpRelay,
-                    udpRelay,
-                    _pacServer,
-                    new PortForwarder(privoxyRunner.RunningPort)
+                    udpRelay
                 };
                 _listener = new Listener(services);
                 _listener.Start(_config);
@@ -252,7 +186,6 @@ namespace Shadowsocks.Controller
             }
 
             ConfigChanged?.Invoke(this, new EventArgs());
-            UpdateSystemProxy();
         }
 
         protected void SaveConfig(Configuration newConfig)
@@ -309,109 +242,12 @@ namespace Shadowsocks.Controller
 
         #endregion
 
-        #region OS Proxy
-
-        public void ToggleEnable(bool enabled)
-        {
-            _config.enabled = enabled;
-            SaveConfig(_config);
-
-            EnableStatusChanged?.Invoke(this, new EventArgs());
-        }
-
-        public void ToggleGlobal(bool global)
-        {
-            _config.global = global;
-            SaveConfig(_config);
-
-            EnableGlobalChanged?.Invoke(this, new EventArgs());
-        }
+        #region Forward Proxy
 
         public void SaveProxy(ForwardProxyConfig proxyConfig)
         {
             _config.proxy = proxyConfig;
             SaveConfig(_config);
-        }
-
-        private void UpdateSystemProxy()
-        {
-            SystemProxy.Update(_config, false, _pacServer);
-        }
-
-        #endregion
-
-        #region PAC
-
-        private void PacDaemon_PACFileChanged(object sender, EventArgs e)
-        {
-            UpdateSystemProxy();
-        }
-
-        private void PacServer_PACUpdateCompleted(object sender, GeositeResultEventArgs e)
-        {
-            UpdatePACFromGeositeCompleted?.Invoke(this, e);
-        }
-
-        private void PacServer_PACUpdateError(object sender, ErrorEventArgs e)
-        {
-            UpdatePACFromGeositeError?.Invoke(this, e);
-        }
-
-        private static readonly IEnumerable<char> IgnoredLineBegins = new[] { '!', '[' };
-        private void PacDaemon_UserRuleFileChanged(object sender, EventArgs e)
-        {
-            GeositeUpdater.MergeAndWritePACFile(_config.geositeDirectGroups, _config.geositeProxiedGroups, _config.geositePreferDirect);
-            UpdateSystemProxy();
-        }
-
-        public void CopyPacUrl()
-        {
-            Clipboard.SetDataObject(_pacServer.PacUrl);
-        }
-
-        public void SavePACUrl(string pacUrl)
-        {
-            _config.pacUrl = pacUrl;
-            SaveConfig(_config);
-
-            ConfigChanged?.Invoke(this, new EventArgs());
-        }
-
-        public void UseOnlinePAC(bool useOnlinePac)
-        {
-            _config.useOnlinePac = useOnlinePac;
-            SaveConfig(_config);
-
-            ConfigChanged?.Invoke(this, new EventArgs());
-        }
-
-        public void TouchPACFile()
-        {
-            string pacFilename = _pacDaemon.TouchPACFile();
-
-            PACFileReadyToOpen?.Invoke(this, new PathEventArgs() { Path = pacFilename });
-        }
-
-        public void TouchUserRuleFile()
-        {
-            string userRuleFilename = _pacDaemon.TouchUserRuleFile();
-
-            UserRuleFileReadyToOpen?.Invoke(this, new PathEventArgs() { Path = userRuleFilename });
-        }
-
-        public void ToggleSecureLocalPac(bool enabled)
-        {
-            _config.secureLocalPac = enabled;
-            SaveConfig(_config);
-
-            ConfigChanged?.Invoke(this, new EventArgs());
-        }
-
-        public void ToggleRegeneratePacOnUpdate(bool enabled)
-        {
-            _config.regeneratePacOnUpdate = enabled;
-            SaveConfig(_config);
-            ConfigChanged?.Invoke(this, new EventArgs());
         }
 
         #endregion

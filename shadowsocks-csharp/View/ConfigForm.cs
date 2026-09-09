@@ -444,7 +444,7 @@ namespace Shadowsocks.View
             }
 
             int localPort = int.Parse(ProxyPortTextBox.Text);
-            Configuration.CheckLocalPort(localPort);
+            Configuration.CheckPort(localPort);
             _modifiedConfiguration.localPort = localPort;
 
             _modifiedConfiguration.portableMode = PortableModeCheckBox.Checked;

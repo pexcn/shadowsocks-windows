@@ -138,12 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>確定</value>
   </data>
-  <data name="ToggleSystemProxy" xml:space="preserve">
-    <value>切換系統 Proxy 狀態</value>
-  </data>
-  <data name="ToggleProxyMode" xml:space="preserve">
-    <value>切換系統 Proxy 模式</value>
-  </data>
   <data name="AllowClientsFromLAN" xml:space="preserve">
     <value>切換區域網路共用</value>
   </data>

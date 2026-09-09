@@ -138,12 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>ОК</value>
   </data>
-  <data name="ToggleSystemProxy" xml:space="preserve">
-    <value>ВКЛ/ВЫКЛ системный прокси-сервер</value>
-  </data>
-  <data name="ToggleProxyMode" xml:space="preserve">
-    <value>Переключение режима прокси-сервера</value>
-  </data>
   <data name="AllowClientsFromLAN" xml:space="preserve">
     <value>Общий доступ к подключению</value>
   </data>
