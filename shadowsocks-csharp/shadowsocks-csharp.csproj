@@ -13,6 +13,10 @@
          from the git tag and UpdateChecker reads back at run time. Title and
          Product default to AssemblyName, the value they were given by hand. -->
     <Copyright>clowwindy &amp; community 2020</Copyright>
+    <!-- The exe property page shows the informational version as the product
+         version, and the SDK ends that one with +<commit sha>; the tag alone is
+         what belongs there. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- AssemblyCompany and AssemblyDescription were empty before the SDK started
          generating them; left on, they would both be filled with AssemblyName. -->
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
