@@ -18,6 +18,18 @@ namespace Shadowsocks.Controller
         // TODO: choose a smart number
         private LRUCache<IPEndPoint, UDPHandler> _cache = new LRUCache<IPEndPoint, UDPHandler>(512);
 
+        // The cache only evicts when it is full, so an idle handler -- and the
+        // native cipher contexts its encryptor now holds for the life of the
+        // session -- used to sit there until a 512th endpoint came along, or
+        // until the process exited. Five minutes is well past any NAT's idea of
+        // a UDP mapping, and the sweep is throttled the way TCPRelay throttles
+        // its own, since Handle runs once per datagram rather than per session.
+        private static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan SweepInterval = TimeSpan.FromSeconds(1);
+
+        private readonly object _sweepLock = new object();
+        private DateTime _lastSweepTime = DateTime.Now;
+
         public long outbound = 0;
         public long inbound = 0;
 
@@ -46,7 +58,30 @@ namespace Shadowsocks.Controller
                 _cache.add(remoteEndPoint, handler);
             }
             handler.Send(firstPacket, length);
+
+            // After the send, so the endpoint we were just asked about is not a
+            // candidate for its own sweep.
+            SweepIdleHandlers();
             return true;
+        }
+
+        public override void Stop()
+        {
+            _cache.clear();
+        }
+
+        private void SweepIdleHandlers()
+        {
+            lock (_sweepLock)
+            {
+                DateTime now = DateTime.Now;
+                if (now - _lastSweepTime < SweepInterval)
+                {
+                    return;
+                }
+                _lastSweepTime = now;
+            }
+            _cache.sweep(IdleTimeout);
         }
 
         public class UDPHandler
@@ -68,6 +103,10 @@ namespace Shadowsocks.Controller
             private IPEndPoint _localEndPoint;
             private IPEndPoint _remoteEndPoint;
 
+            // Read by the relay's idle sweep, written from both the thread that
+            // sends and the one that receives.
+            public DateTime lastActivity;
+
             private IPAddress GetIPAddress()
             {
                 switch (_remote.AddressFamily)
@@ -86,6 +125,7 @@ namespace Shadowsocks.Controller
                 _local = local;
                 _server = server;
                 _localEndPoint = localEndPoint;
+                lastActivity = DateTime.Now;
 
                 // TODO async resolving
                 IPAddress ipAddress;
@@ -104,6 +144,7 @@ namespace Shadowsocks.Controller
 
             public void Send(byte[] data, int length)
             {
+                lastActivity = DateTime.Now;
                 byte[] dataIn = new byte[length - 3];
                 Array.Copy(data, 3, dataIn, 0, length - 3);
                 byte[] dataOut = new byte[65536];  // enough space for AEAD ciphers
@@ -138,6 +179,7 @@ namespace Shadowsocks.Controller
                     if (_remote == null) return;
                     EndPoint remoteEndPoint = new IPEndPoint(GetIPAddress(), 0);
                     int bytesRead = _remote.EndReceiveFrom(ar, ref remoteEndPoint);
+                    lastActivity = DateTime.Now;
 
                     byte[] dataOut = new byte[bytesRead];
                     int outlen;
@@ -181,8 +223,8 @@ namespace Shadowsocks.Controller
                             // Nothing may escape a finally here: this runs on an
                             // IOCP thread, and an exception that leaves a thread
                             // pool thread unhandled kills the process. A handler
-                            // that cannot re-arm goes deaf, but at least it does
-                            // not take everything else with it.
+                            // that cannot re-arm goes deaf, and the relay's idle
+                            // sweep eventually collects it.
                             logger.LogUsefulException(e);
                         }
                     }
@@ -260,11 +302,48 @@ namespace Shadowsocks.Controller
             cacheMap.Add(key, node);
         }
 
+        /// <summary>
+        /// Drops every handler that has neither sent nor received for
+        /// <paramref name="idleTimeout"/>. The list is ordered by use, but only
+        /// by outbound use -- a handler that is only receiving never touches
+        /// it -- so there is no prefix to stop at, and the whole list is walked.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        public void sweep(TimeSpan idleTimeout)
+        {
+            DateTime now = DateTime.Now;
+            LinkedListNode<LRUCacheItem<K, V>> node = lruList.First;
+            while (node != null)
+            {
+                LinkedListNode<LRUCacheItem<K, V>> next = node.Next;
+                if (now - node.Value.value.lastActivity > idleTimeout)
+                {
+                    Remove(node);
+                }
+                node = next;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        public void clear()
+        {
+            foreach (LRUCacheItem<K, V> item in lruList)
+            {
+                item.value.Close();
+            }
+            lruList.Clear();
+            cacheMap.Clear();
+        }
+
         private void RemoveFirst()
         {
+            Remove(lruList.First);
+        }
+
+        private void Remove(LinkedListNode<LRUCacheItem<K, V>> node)
+        {
             // Remove from LRUPriority
-            LinkedListNode<LRUCacheItem<K, V>> node = lruList.First;
-            lruList.RemoveFirst();
+            lruList.Remove(node);
 
             // Remove from cache
             cacheMap.Remove(node.Value.key);
