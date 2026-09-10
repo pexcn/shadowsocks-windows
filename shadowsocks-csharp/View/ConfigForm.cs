@@ -28,7 +28,6 @@ namespace Shadowsocks.View
             private static string[] inuseMethod = new string[]
             {
                 "none",
-                "plain",
                 "aes-128-gcm",
                 "aes-192-gcm",
                 "aes-256-gcm",
@@ -48,6 +47,12 @@ namespace Shadowsocks.View
                     return allMethods;
                 }
             }
+            // Aliases of a method above that a config file or an ss:// link may
+            // carry, so they resolve instead of warning and falling back.
+            private static Dictionary<string, string> methodAliases = new Dictionary<string, string>
+            {
+                {"plain", "none"},
+            };
             private static bool init = false;
             private static EncryptionMethod[] allMethods;
             private static Dictionary<string, EncryptionMethod> methodByName = new Dictionary<string, EncryptionMethod>();
@@ -69,6 +74,10 @@ namespace Shadowsocks.View
             {
                 if (!init) Init();
                 bool success = methodByName.TryGetValue(name, out EncryptionMethod method);
+                if (!success && methodAliases.TryGetValue(name, out string alias))
+                {
+                    success = methodByName.TryGetValue(alias, out method);
+                }
                 if (!success)
                 {
                     string defaultMethod = Server.DefaultMethod;
