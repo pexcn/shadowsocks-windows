@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using Shadowsocks.Encryption.AEAD;
 using Shadowsocks.Encryption.Stream;
@@ -22,6 +23,14 @@ namespace Shadowsocks.Encryption
             {
                 // libsodium refuses aes-256-gcm without AES-NI
                 AEADSodiumEncryptorSupportedCiphers.Remove("aes-256-gcm");
+            }
+
+            // SIP022 methods get their own encryptor. Their names do not collide
+            // with the AEAD-2018 ones, so the order here is not load bearing.
+            foreach (string method in AEAD2022Encryptor.SupportedCiphers())
+            {
+                if (!_registeredEncryptors.ContainsKey(method))
+                    _registeredEncryptors.Add(method, typeof(AEAD2022Encryptor));
             }
 
             // XXX: sequence matters, OpenSSL > Sodium. OpenSSL goes first for its
@@ -57,8 +66,19 @@ namespace Shadowsocks.Encryption
 
             ConstructorInfo c = t.GetConstructor(ConstructorTypes);
             if (c == null) throw new System.Exception("Invalid ctor");
-            IEncryptor result = (IEncryptor) c.Invoke(new object[] {method, password});
-            return result;
+            try
+            {
+                return (IEncryptor) c.Invoke(new object[] {method, password});
+            }
+            catch (TargetInvocationException e) when (e.InnerException != null)
+            {
+                // The 2022 methods reject a malformed key in their constructor,
+                // and that message is the whole point of validating there. Let
+                // it through instead of "Exception has been thrown by the target
+                // of an invocation", keeping the original stack trace.
+                ExceptionDispatchInfo.Capture(e.InnerException).Throw();
+                throw; // unreachable; the compiler wants a definite exit
+            }
         }
 
         public static string DumpRegisteredEncryptor()

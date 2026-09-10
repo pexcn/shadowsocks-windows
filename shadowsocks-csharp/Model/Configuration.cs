@@ -6,6 +6,7 @@ using System.Windows;
 using Newtonsoft.Json;
 using NLog;
 using Shadowsocks.Controller;
+using Shadowsocks.Encryption.AEAD;
 
 namespace Shadowsocks.Model
 {
@@ -111,6 +112,10 @@ namespace Shadowsocks.Model
             CheckServer(server.server);
             CheckPort(server.server_port);
             CheckPassword(server.password);
+            // The 2022 methods take a base64 key of an exact length, not a
+            // passphrase, and getting that wrong is otherwise invisible until
+            // the connection quietly fails to authenticate.
+            AEAD2022Encryptor.CheckKey(server.method, server.password);
             CheckTimeout(server.timeout, Server.MaxServerTimeoutSec);
         }
 

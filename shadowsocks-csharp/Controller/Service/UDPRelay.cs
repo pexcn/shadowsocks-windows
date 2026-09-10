@@ -93,6 +93,11 @@ namespace Shadowsocks.Controller
                 _remote.Bind(new IPEndPoint(GetIPAddress(), 0));
             }
 
+            // SIP022 UDP is a separate, session-based construction that this
+            // per-packet path cannot express, so those methods throw. Say so
+            // once per handler instead of on every datagram.
+            private bool _udpUnsupportedLogged;
+
             public void Send(byte[] data, int length)
             {
                 IEncryptor encryptor = EncryptorFactory.GetEncryptor(_server.method, _server.password);
@@ -100,7 +105,19 @@ namespace Shadowsocks.Controller
                 Array.Copy(data, 3, dataIn, 0, length - 3);
                 byte[] dataOut = new byte[65536];  // enough space for AEAD ciphers
                 int outlen;
-                encryptor.EncryptUDP(dataIn, length - 3, dataOut, out outlen);
+                try
+                {
+                    encryptor.EncryptUDP(dataIn, length - 3, dataOut, out outlen);
+                }
+                catch (NotSupportedException e)
+                {
+                    if (!_udpUnsupportedLogged)
+                    {
+                        _udpUnsupportedLogged = true;
+                        logger.Warn(e.Message);
+                    }
+                    return;
+                }
                 logger.Debug(_localEndPoint, _remoteEndPoint, outlen, "UDP Relay");
                 _remote?.SendTo(dataOut, outlen, SocketFlags.None, _remoteEndPoint);
             }

@@ -34,6 +34,11 @@ namespace Shadowsocks.View
                 "aes-128-gcm",
                 "chacha20-ietf-poly1305",
                 "xchacha20-ietf-poly1305",
+                // SIP022. The password field for these is a base64 key, not a
+                // passphrase: 16 bytes for aes-128-gcm, 32 for the other two.
+                "2022-blake3-aes-128-gcm",
+                "2022-blake3-aes-256-gcm",
+                "2022-blake3-chacha20-poly1305",
             };
             public static EncryptionMethod[] AllMethods
             {

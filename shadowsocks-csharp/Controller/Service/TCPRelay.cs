@@ -188,6 +188,16 @@ namespace Shadowsocks.Controller
         // In general, the ciphertext length, we should take overhead into account
         public const int BufferSize = RecvSize + (int)MaxChunkSize + 32 /* max salt len */;
 
+        // Decrypt has to be able to hand back everything it holds in one call:
+        // the relay does not read again until it has sent what came out, so
+        // plaintext left behind would stall the connection. SIP022 allows a
+        // 0xFFFF payload chunk where AEAD-2018 stops at 0x3FFF, and plaintext is
+        // always shorter than the ciphertext it came from, so matching the
+        // largest receive buffer any encryptor uses is enough. The other three
+        // buffers are bounded by RecvSize and stay as they are.
+        public static readonly int DecryptedBufferSize =
+            Math.Max(BufferSize, AEAD2022Encryptor.RecvBufferCapacity);
+
         public DateTime lastActivity;
 
         private readonly ShadowsocksController _controller;
@@ -222,7 +232,7 @@ namespace Shadowsocks.Controller
         private readonly byte[] _connetionRecvBuffer = new byte[BufferSize];
 
         // local proxy -> remote (plaintext, after decrypt)
-        private readonly byte[] _remoteSendBuffer = new byte[BufferSize];
+        private readonly byte[] _remoteSendBuffer = new byte[DecryptedBufferSize];
 
         // local proxy -> client (ciphertext, before decrypt)
         private readonly byte[] _connetionSendBuffer = new byte[BufferSize];
