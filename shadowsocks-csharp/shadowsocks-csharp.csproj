@@ -9,9 +9,14 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>shadowsocks.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- Properties\AssemblyInfo.cs is kept by hand: AssemblyVersion is bound to
-         the UpdateChecker.Version constant, which the SDK cannot generate. -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- The version attributes come from -p:Version=, which the workflow derives
+         from the git tag and UpdateChecker reads back at run time. Title and
+         Product default to AssemblyName, the value they were given by hand. -->
+    <Copyright>clowwindy &amp; community 2020</Copyright>
+    <!-- AssemblyCompany and AssemblyDescription were empty before the SDK started
+         generating them; left on, they would both be filled with AssemblyName. -->
+    <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
+    <GenerateAssemblyDescriptionAttribute>false</GenerateAssemblyDescriptionAttribute>
     <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
     <!-- The NuGet graph is redirect-heavy (System.Text.Json, System.Memory and
          friends); let the SDK write app.config redirects that match it. -->

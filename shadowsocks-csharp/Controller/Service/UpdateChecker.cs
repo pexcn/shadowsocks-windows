@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
@@ -33,7 +34,9 @@ namespace Shadowsocks.Controller
 
         public event EventHandler CheckUpdateCompleted;
 
-        public const string Version = "4.4.1.0";
+        // The build stamps the assembly version from the git tag, so a release
+        // reports the version it was tagged with instead of a constant kept by hand.
+        public static readonly string Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
         private readonly Version _version;
 
         public UpdateChecker()
