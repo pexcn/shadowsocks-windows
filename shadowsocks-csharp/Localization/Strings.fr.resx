@@ -138,21 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>OK</value>
   </data>
-  <data name="AllowClientsFromLAN" xml:space="preserve">
-    <value>Autoriser les clients du LAN</value>
-  </data>
-  <data name="OpenLogsWindow" xml:space="preserve">
-    <value>Afficher les journaux</value>
-  </data>
-  <data name="SwitchToPreviousServer" xml:space="preserve">
-    <value>Passer au serveur précédent</value>
-  </data>
-  <data name="SwitchToNextServer" xml:space="preserve">
-    <value>Passer au serveur suivant</value>
-  </data>
-  <data name="RegisterHotkeysAtStartup" xml:space="preserve">
-    <value>Enregistrer tout</value>
-  </data>
   <data name="registerAllButton_Content" xml:space="preserve">
     <value>Enregistrer tout au démarrage</value>
   </data>

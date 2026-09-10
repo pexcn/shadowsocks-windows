@@ -27,7 +27,6 @@ Updates...,Обновления…,更新...,更新...,アップデート...,업
 Check for Updates...,Проверить обновления…,检查更新,檢查更新,アップデートを確認...,업데이트 확인하기…,Vérifier les mises à jour ...
 Check for Updates at Startup,Проверять при запуске,启动时检查更新,啟動時檢查更新,起動時にアップデートを確認,시스템 시작 시 업데이트 확인하기,Vérifier les mises à jour au démarrage
 Check Pre-release Version,Проверять предрелизные версии,检查测试版更新,檢查發行前版本更新,ベータ版のアップデートも確認,개발 버전 업데이트 확인하기,Vérifier la version préliminaire
-Edit Hotkeys...,Горячие клавиши…,编辑快捷键...,編輯快速鍵...,ホットキーの編集...,단축키 수정…,Modifier les raccourcis clavier ...
 About...,О программе…,关于...,關於...,Shadowsocks について...,정보…,A propos
 Help,Помощь,帮助,說明,ヘルプ,도움말,Aide
 Quit,Выход,退出,結束,終了,종료,Quitter
@@ -116,8 +115,6 @@ Running: Port {0},Запущен на порту {0},正在运行：端口 {0},�
 "Unsupported .NET Framework, please update to {0} or later.","Версия .NET Framework не поддерживается, минимальные системные требования: {0} или выше.",当前 .NET Framework 版本过低，请升级至{0}或更新版本。,目前 .NET Framework 版本過低，最低需求為{0}。,お使いの .NET Framework はサポートされていません。{0} 以降のバンジョーをインストールして下さい。,지원하지 않는 .NET 프레임워크입니다. {0} 또는 상위 버전으로 업데이트해주세요.,".NET Framework incompatible, veuillez mettre à jour vers {0} ou ultérieure."
 Proxy request failed,Не удалось выполнить запрос,代理请求失败,Proxy 要求失敗,プロキシリクエストが失敗しました。,프록시 요청에 실패했습니다.,Échec de la demande de proxy
 Proxy handshake failed,Не удалось выполнить хэндшейк,代理握手失败,Proxy 交握失敗,プロキシ ハンドシェイクに失敗しました。,프록시 핸드쉐이크에 실패했습니다.,Échec de la prise de contact par proxy
-Register hotkey failed,Не удалось применить настройки горячих клавиш,注册快捷键失败,註冊快速鍵失敗,ホットキーの登錄に失敗しました。,단축키 등록에 실패했습니다.,Échec de l'enregistrement du raccourci clavier
-Cannot parse hotkey: {0},Не удалось распознать следующие горячие клавиши: {0},解析快捷键失败: {0},剖析快速鍵失敗: {0},ホットキーを解析できません: {0},단축키를 해석할 수 없습니다: {0},Impossible d'analyser le raccourci clavier: {0}
 "Timeout is invalid, it should not exceed {0}",Таймаут не может превышать значение {0},超时无效，不应超过 {0},逾時無效，不應超過 {0},タイムアウト値が無効です。{0} 以下の値を指定して下さい。,올바르지 않은 시간 초과 설정입니다. {0}을 초과하지 않아야 합니다.,"Le délai d'attente invalide, il ne doit pas dépasser {0}"
 Cannot find the plugin program file,Файл плагина не найден,找不到插件程序文件,找不到外掛程式文件,プラグインプログラムが見つかりません,플러그인 프로그램 파일을 찾을 수 없습니다.,Impossible de trouver le fichier du programme du plugin
 ,,,,,,

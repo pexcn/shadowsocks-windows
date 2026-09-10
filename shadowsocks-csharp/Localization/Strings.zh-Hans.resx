@@ -156,21 +156,6 @@
   <data name="registerAllButton_Content" xml:space="preserve">
     <value>全部注册</value>
   </data>
-  <data name="AllowClientsFromLAN" xml:space="preserve">
-    <value>允许内网客户端连接</value>
-  </data>
-  <data name="OpenLogsWindow" xml:space="preserve">
-    <value>打开日志窗口</value>
-  </data>
-  <data name="SwitchToPreviousServer" xml:space="preserve">
-    <value>切换到上一个服务器</value>
-  </data>
-  <data name="SwitchToNextServer" xml:space="preserve">
-    <value>切换到下一个服务器</value>
-  </data>
-  <data name="RegisterHotkeysAtStartup" xml:space="preserve">
-    <value>启动时注册快捷键</value>
-  </data>
   <data name="updateButton_Content" xml:space="preserve">
     <value>更新</value>
   </data>
@@ -206,9 +191,6 @@
   </data>
   <data name="OnlineConfigDelivery" xml:space="preserve">
     <value>在线配置下发</value>
-  </data>
-  <data name="Hotkeys" xml:space="preserve">
-    <value>热键</value>
   </data>
   <data name="ServerSharing" xml:space="preserve">
     <value>服务器分享</value>

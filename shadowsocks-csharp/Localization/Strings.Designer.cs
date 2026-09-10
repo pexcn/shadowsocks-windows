@@ -79,15 +79,6 @@ namespace Shadowsocks.Localization {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Allow clients from LAN.
-        /// </summary>
-        internal static string AllowClientsFromLAN {
-            get {
-                return ResourceManager.GetString("AllowClientsFromLAN", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to _Cancel.
         /// </summary>
         internal static string cancelButton_Content {
@@ -142,15 +133,6 @@ namespace Shadowsocks.Localization {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Hotkeys.
-        /// </summary>
-        internal static string Hotkeys {
-            get {
-                return ResourceManager.GetString("Hotkeys", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to HTTP.
         /// </summary>
         internal static string HTTP {
@@ -196,15 +178,6 @@ namespace Shadowsocks.Localization {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Open logs window.
-        /// </summary>
-        internal static string OpenLogsWindow {
-            get {
-                return ResourceManager.GetString("OpenLogsWindow", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Password.
         /// </summary>
         internal static string Password {
@@ -228,15 +201,6 @@ namespace Shadowsocks.Localization {
         internal static string registerAllButton_Content {
             get {
                 return ResourceManager.GetString("registerAllButton_Content", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Register hotkeys at startup.
-        /// </summary>
-        internal static string RegisterHotkeysAtStartup {
-            get {
-                return ResourceManager.GetString("RegisterHotkeysAtStartup", resourceCulture);
             }
         }
         
@@ -318,24 +282,6 @@ namespace Shadowsocks.Localization {
         internal static string SOCKS5 {
             get {
                 return ResourceManager.GetString("SOCKS5", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Switch to next server.
-        /// </summary>
-        internal static string SwitchToNextServer {
-            get {
-                return ResourceManager.GetString("SwitchToNextServer", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Switch to previous server.
-        /// </summary>
-        internal static string SwitchToPreviousServer {
-            get {
-                return ResourceManager.GetString("SwitchToPreviousServer", resourceCulture);
             }
         }
         

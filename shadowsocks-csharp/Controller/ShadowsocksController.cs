@@ -99,8 +99,6 @@ namespace Shadowsocks.Controller
                 Configuration.Save(_config);
             }
             Reload();
-            if (!systemWakeUp)
-                HotkeyReg.RegAllHotkeys();
         }
 
         public void Stop()
@@ -344,14 +342,6 @@ namespace Shadowsocks.Controller
             _config.logViewer = newConfig;
             newConfig.SaveSize();
             Configuration.Save(_config);
-
-            ConfigChanged?.Invoke(this, new EventArgs());
-        }
-
-        public void SaveHotkeyConfig(HotkeyConfig newConfig)
-        {
-            _config.hotkey = newConfig;
-            SaveConfig(_config);
 
             ConfigChanged?.Invoke(this, new EventArgs());
         }

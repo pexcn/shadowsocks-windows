@@ -159,21 +159,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>_OK</value>
   </data>
-  <data name="AllowClientsFromLAN" xml:space="preserve">
-    <value>Allow clients from LAN</value>
-  </data>
-  <data name="OpenLogsWindow" xml:space="preserve">
-    <value>Open logs window</value>
-  </data>
-  <data name="SwitchToPreviousServer" xml:space="preserve">
-    <value>Switch to previous server</value>
-  </data>
-  <data name="SwitchToNextServer" xml:space="preserve">
-    <value>Switch to next server</value>
-  </data>
-  <data name="RegisterHotkeysAtStartup" xml:space="preserve">
-    <value>Register hotkeys at startup</value>
-  </data>
   <data name="registerAllButton_Content" xml:space="preserve">
     <value>_Register all</value>
   </data>
@@ -212,9 +197,6 @@
   </data>
   <data name="ServerSharing" xml:space="preserve">
     <value>Server Sharing</value>
-  </data>
-  <data name="Hotkeys" xml:space="preserve">
-    <value>Hotkeys</value>
   </data>
   <data name="OnlineConfigDelivery" xml:space="preserve">
     <value>Online Configuration Delivery</value>

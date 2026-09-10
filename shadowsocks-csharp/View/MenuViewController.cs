@@ -40,7 +40,6 @@ namespace Shadowsocks.View
         private MenuItem autoCheckUpdatesToggleItem;
         private MenuItem checkPreReleaseToggleItem;
         private MenuItem proxyItem;
-        private MenuItem hotKeyItem;
         private MenuItem VerboseLoggingToggleItem;
         private MenuItem ShowPluginOutputToggleItem;
         private MenuItem WriteI18NFileItem;
@@ -50,7 +49,6 @@ namespace Shadowsocks.View
         private LogForm logForm;
 
         private System.Windows.Window serverSharingWindow;
-        private System.Windows.Window hotkeysWindow;
         private System.Windows.Window forwardProxyWindow;
         private System.Windows.Window onlineConfigWindow;
 
@@ -219,7 +217,6 @@ namespace Shadowsocks.View
                 this.ProtocolHandlerItem = CreateMenuItem("Associate ss:// Links", new EventHandler(this.ProtocolHandlerItem_Click)),
                 this.ShareOverLANItem = CreateMenuItem("Allow other Devices to connect", new EventHandler(this.ShareOverLANItem_Click)),
                 new MenuItem("-"),
-                this.hotKeyItem = CreateMenuItem("Edit Hotkeys...", new EventHandler(this.hotKeyItem_Click)),
                 CreateMenuGroup("Help", new MenuItem[] {
                     CreateMenuItem("Show Logs...", new EventHandler(this.ShowLogItem_Click)),
                     this.VerboseLoggingToggleItem = CreateMenuItem( "Verbose Logging", new EventHandler(this.VerboseLoggingToggleItem_Click) ),
@@ -391,11 +388,6 @@ namespace Shadowsocks.View
             Dispatcher.CurrentDispatcher.Invoke(() => updateChecker.CheckForVersionUpdate(3000));
         }
 
-        public void ShowLogForm_HotKey()
-        {
-            ShowLogForm();
-        }
-
         #endregion
 
         #region Main menu
@@ -456,33 +448,6 @@ namespace Shadowsocks.View
         {
             onlineConfigWindow = null;
         }
-
-        private void hotKeyItem_Click(object sender, EventArgs e)
-        {
-            if (hotkeysWindow == null)
-            {
-                hotkeysWindow = new System.Windows.Window()
-                {
-                    Title = LocalizationProvider.GetLocalizedValue<string>("Hotkeys"),
-                    Height = 200,
-                    Width = 320,
-                    MinHeight = 200,
-                    MinWidth = 320,
-                    Content = new HotkeysView()
-                };
-                hotkeysWindow.Closed += HotkeysWindow_Closed;
-                ElementHost.EnableModelessKeyboardInterop(hotkeysWindow);
-                hotkeysWindow.Show();
-            }
-            hotkeysWindow.Activate();
-        }
-
-        private void HotkeysWindow_Closed(object sender, EventArgs e)
-        {
-            hotkeysWindow = null;
-        }
-
-        public void CloseHotkeysWindow() => hotkeysWindow.Close();
 
         private void ShareOverLANItem_Click(object sender, EventArgs e)
         {

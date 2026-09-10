@@ -54,37 +54,6 @@ _Note_: Forward Proxy will not be used while a plugin is enabled.
 Details:
 [Working with non SIP003 standard Plugin].
 
-## Global hotkeys
-
-Hotkeys could be registered automatically on startup.
-If you are using multiple instances of Shadowsocks,
-you must set different key combination for each instance.
-
-### How to input?
-
-1. Put focus in the corresponding textbox.
-2. Press the key combination that you want to use.
-3. Release all keys when you think it is ready.
-4. Your input appears in the textbox.
-
-### How to change?
-
-1. Put focus in the corresponding textbox.
-2. Press BackSpace key to clear content.
-3. Re-input new key combination.
-
-### How to deactivate?
-
-1. Clear content in the textbox that you want to deactivate,
-if you want to deactivate all, please clear all textboxes.
-2. Press OK button to confirm.
-
-### Meaning of label color
-
-- Green: This key combination is not occupied by other programs and register successfully.
-- Yellow: This key combination is occupied by other programs and you have to change to another one.
-- Transparent without color: The initial status.
-
 ## Server Configuration
 
 Please visit [Servers] for more information.
@@ -109,7 +78,6 @@ especially for feature development.
 Caseless.Fody (MIT)              https://github.com/Fody/Caseless
 Costura.Fody (MIT)               https://github.com/Fody/Costura
 Fody (MIT)                       https://github.com/Fody/Fody
-GlobalHotKey (GPLv3)             https://github.com/kirmir/GlobalHotKey
 MdXaml (MIT)                     https://github.com/whistyun/MdXaml
 Newtonsoft.Json (MIT)            https://www.newtonsoft.com/json
 ReactiveUI.WPF (MIT)             https://github.com/reactiveui/ReactiveUI

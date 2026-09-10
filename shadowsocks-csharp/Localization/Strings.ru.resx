@@ -138,21 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>ОК</value>
   </data>
-  <data name="AllowClientsFromLAN" xml:space="preserve">
-    <value>Общий доступ к подключению</value>
-  </data>
-  <data name="OpenLogsWindow" xml:space="preserve">
-    <value>Просмотр журналов</value>
-  </data>
-  <data name="SwitchToPreviousServer" xml:space="preserve">
-    <value>Переключить на пред. сервер</value>
-  </data>
-  <data name="SwitchToNextServer" xml:space="preserve">
-    <value>Переключить на след. сервер</value>
-  </data>
-  <data name="RegisterHotkeysAtStartup" xml:space="preserve">
-    <value>Применить все</value>
-  </data>
   <data name="registerAllButton_Content" xml:space="preserve">
     <value>Применять при запуске программы</value>
   </data>

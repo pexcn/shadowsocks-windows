@@ -138,21 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>確定</value>
   </data>
-  <data name="AllowClientsFromLAN" xml:space="preserve">
-    <value>切換區域網路共用</value>
-  </data>
-  <data name="OpenLogsWindow" xml:space="preserve">
-    <value>顯示記錄檔</value>
-  </data>
-  <data name="SwitchToPreviousServer" xml:space="preserve">
-    <value>切換上一個伺服器</value>
-  </data>
-  <data name="SwitchToNextServer" xml:space="preserve">
-    <value>切換下一個伺服器</value>
-  </data>
-  <data name="RegisterHotkeysAtStartup" xml:space="preserve">
-    <value>註冊所有快速鍵</value>
-  </data>
   <data name="registerAllButton_Content" xml:space="preserve">
     <value>啟動時註冊快速鍵</value>
   </data>

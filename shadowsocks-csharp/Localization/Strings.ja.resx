@@ -138,21 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>OK</value>
   </data>
-  <data name="AllowClientsFromLAN" xml:space="preserve">
-    <value>LAN からのアクセスの許可を切り替える</value>
-  </data>
-  <data name="OpenLogsWindow" xml:space="preserve">
-    <value>ログの表示</value>
-  </data>
-  <data name="SwitchToPreviousServer" xml:space="preserve">
-    <value>前のサーバーに切り替える</value>
-  </data>
-  <data name="SwitchToNextServer" xml:space="preserve">
-    <value>次のサーバーに切り替える</value>
-  </data>
-  <data name="RegisterHotkeysAtStartup" xml:space="preserve">
-    <value>全部登録する</value>
-  </data>
   <data name="registerAllButton_Content" xml:space="preserve">
     <value>起動時にホットキーを登録する</value>
   </data>

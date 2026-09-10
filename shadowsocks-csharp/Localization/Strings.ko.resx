@@ -138,21 +138,6 @@
   <data name="okButton_Content" xml:space="preserve">
     <value>확인</value>
   </data>
-  <data name="AllowClientsFromLAN" xml:space="preserve">
-    <value>LAN으로부터 클라이언트 허용</value>
-  </data>
-  <data name="OpenLogsWindow" xml:space="preserve">
-    <value>로그 보기…</value>
-  </data>
-  <data name="SwitchToPreviousServer" xml:space="preserve">
-    <value>이전 서버로 전환</value>
-  </data>
-  <data name="SwitchToNextServer" xml:space="preserve">
-    <value>다음 서버로 전환</value>
-  </data>
-  <data name="RegisterHotkeysAtStartup" xml:space="preserve">
-    <value>모두 등록</value>
-  </data>
   <data name="registerAllButton_Content" xml:space="preserve">
     <value>시스템 시작 시 단축키 등록</value>
   </data>

@@ -43,7 +43,6 @@ namespace Shadowsocks.Model
         //public NLogConfig.LogLevel logLevel;
         public LogViewerConfig logViewer;
         public ForwardProxyConfig proxy;
-        public HotkeyConfig hotkey;
 
         [JsonIgnore]
         public bool firstRunOnNewVersion;
@@ -70,7 +69,6 @@ namespace Shadowsocks.Model
 
             logViewer = new LogViewerConfig();
             proxy = new ForwardProxyConfig();
-            hotkey = new HotkeyConfig();
 
             firstRunOnNewVersion = false;
 
