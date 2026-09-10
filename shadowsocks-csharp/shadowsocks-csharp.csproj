@@ -98,12 +98,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The localized strings live in their own assembly so that Costura embeds
+         the satellite assemblies: it only weaves reference copy-local files, and
+         the satellites a project generates for itself never appear in that set. -->
+    <ProjectReference Include="..\shadowsocks-localization\shadowsocks-localization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Designer wiring; the SDK globs the files themselves. -->
-    <Compile Update="Localization\Strings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Strings.resx</DependentUpon>
-    </Compile>
     <Compile Update="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -114,10 +116,6 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-    <EmbeddedResource Update="Localization\Strings.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>

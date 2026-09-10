@@ -22,7 +22,7 @@ namespace Shadowsocks.Localization {
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class Strings {
+    public class Strings {
         
         private static global::System.Resources.ResourceManager resourceMan;
         
@@ -36,7 +36,7 @@ namespace Shadowsocks.Localization {
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Resources.ResourceManager ResourceManager {
+        public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
                     global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Shadowsocks.Localization.Strings", typeof(Strings).Assembly);
@@ -51,7 +51,7 @@ namespace Shadowsocks.Localization {
         ///   resource lookups using this strongly typed resource class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Globalization.CultureInfo Culture {
+        public static global::System.Globalization.CultureInfo Culture {
             get {
                 return resourceCulture;
             }
@@ -63,7 +63,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Add.
         /// </summary>
-        internal static string addButton_Content {
+        public static string addButton_Content {
             get {
                 return ResourceManager.GetString("addButton_Content", resourceCulture);
             }
@@ -72,7 +72,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Address.
         /// </summary>
-        internal static string Address {
+        public static string Address {
             get {
                 return ResourceManager.GetString("Address", resourceCulture);
             }
@@ -81,7 +81,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Cancel.
         /// </summary>
-        internal static string cancelButton_Content {
+        public static string cancelButton_Content {
             get {
                 return ResourceManager.GetString("cancelButton_Content", resourceCulture);
             }
@@ -90,7 +90,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Copy.
         /// </summary>
-        internal static string Copy {
+        public static string Copy {
             get {
                 return ResourceManager.GetString("Copy", resourceCulture);
             }
@@ -99,7 +99,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Copy link.
         /// </summary>
-        internal static string copyLinkButton_Content {
+        public static string copyLinkButton_Content {
             get {
                 return ResourceManager.GetString("copyLinkButton_Content", resourceCulture);
             }
@@ -108,7 +108,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Credentials (optional).
         /// </summary>
-        internal static string CredentialsOptional {
+        public static string CredentialsOptional {
             get {
                 return ResourceManager.GetString("CredentialsOptional", resourceCulture);
             }
@@ -117,7 +117,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Details.
         /// </summary>
-        internal static string Details {
+        public static string Details {
             get {
                 return ResourceManager.GetString("Details", resourceCulture);
             }
@@ -126,7 +126,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Forward Proxy.
         /// </summary>
-        internal static string ForwardProxy {
+        public static string ForwardProxy {
             get {
                 return ResourceManager.GetString("ForwardProxy", resourceCulture);
             }
@@ -135,7 +135,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to HTTP.
         /// </summary>
-        internal static string HTTP {
+        public static string HTTP {
             get {
                 return ResourceManager.GetString("HTTP", resourceCulture);
             }
@@ -144,7 +144,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to No proxy.
         /// </summary>
-        internal static string NoProxy {
+        public static string NoProxy {
             get {
                 return ResourceManager.GetString("NoProxy", resourceCulture);
             }
@@ -153,7 +153,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Not now.
         /// </summary>
-        internal static string notNowButton_Content {
+        public static string notNowButton_Content {
             get {
                 return ResourceManager.GetString("notNowButton_Content", resourceCulture);
             }
@@ -162,7 +162,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _OK.
         /// </summary>
-        internal static string okButton_Content {
+        public static string okButton_Content {
             get {
                 return ResourceManager.GetString("okButton_Content", resourceCulture);
             }
@@ -171,7 +171,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Online Configuration Delivery.
         /// </summary>
-        internal static string OnlineConfigDelivery {
+        public static string OnlineConfigDelivery {
             get {
                 return ResourceManager.GetString("OnlineConfigDelivery", resourceCulture);
             }
@@ -180,7 +180,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Password.
         /// </summary>
-        internal static string Password {
+        public static string Password {
             get {
                 return ResourceManager.GetString("Password", resourceCulture);
             }
@@ -189,7 +189,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Port.
         /// </summary>
-        internal static string Port {
+        public static string Port {
             get {
                 return ResourceManager.GetString("Port", resourceCulture);
             }
@@ -198,7 +198,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Register all.
         /// </summary>
-        internal static string registerAllButton_Content {
+        public static string registerAllButton_Content {
             get {
                 return ResourceManager.GetString("registerAllButton_Content", resourceCulture);
             }
@@ -207,7 +207,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Remove.
         /// </summary>
-        internal static string removeButton_Content {
+        public static string removeButton_Content {
             get {
                 return ResourceManager.GetString("removeButton_Content", resourceCulture);
             }
@@ -216,7 +216,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Save.
         /// </summary>
-        internal static string saveButton_Content {
+        public static string saveButton_Content {
             get {
                 return ResourceManager.GetString("saveButton_Content", resourceCulture);
             }
@@ -225,7 +225,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Server Sharing.
         /// </summary>
-        internal static string ServerSharing {
+        public static string ServerSharing {
             get {
                 return ResourceManager.GetString("ServerSharing", resourceCulture);
             }
@@ -234,7 +234,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to The following sources failed to update:\n\n.
         /// </summary>
-        internal static string sip008UpdateAllFailure {
+        public static string sip008UpdateAllFailure {
             get {
                 return ResourceManager.GetString("sip008UpdateAllFailure", resourceCulture);
             }
@@ -243,7 +243,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Successfully updated all sources!.
         /// </summary>
-        internal static string sip008UpdateAllSuccess {
+        public static string sip008UpdateAllSuccess {
             get {
                 return ResourceManager.GetString("sip008UpdateAllSuccess", resourceCulture);
             }
@@ -252,7 +252,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Update failed. See the logs for more information..
         /// </summary>
-        internal static string sip008UpdateFailure {
+        public static string sip008UpdateFailure {
             get {
                 return ResourceManager.GetString("sip008UpdateFailure", resourceCulture);
             }
@@ -261,7 +261,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Successfully updated the selected source!.
         /// </summary>
-        internal static string sip008UpdateSuccess {
+        public static string sip008UpdateSuccess {
             get {
                 return ResourceManager.GetString("sip008UpdateSuccess", resourceCulture);
             }
@@ -270,7 +270,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Skip version.
         /// </summary>
-        internal static string skipVersionButton_Content {
+        public static string skipVersionButton_Content {
             get {
                 return ResourceManager.GetString("skipVersionButton_Content", resourceCulture);
             }
@@ -279,7 +279,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to SOCKS5.
         /// </summary>
-        internal static string SOCKS5 {
+        public static string SOCKS5 {
             get {
                 return ResourceManager.GetString("SOCKS5", resourceCulture);
             }
@@ -288,7 +288,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Timeout (sec).
         /// </summary>
-        internal static string Timeout {
+        public static string Timeout {
             get {
                 return ResourceManager.GetString("Timeout", resourceCulture);
             }
@@ -297,7 +297,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Type.
         /// </summary>
-        internal static string Type {
+        public static string Type {
             get {
                 return ResourceManager.GetString("Type", resourceCulture);
             }
@@ -306,7 +306,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Update all.
         /// </summary>
-        internal static string updateAllButton_Content {
+        public static string updateAllButton_Content {
             get {
                 return ResourceManager.GetString("updateAllButton_Content", resourceCulture);
             }
@@ -315,7 +315,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to _Update.
         /// </summary>
-        internal static string updateButton_Content {
+        public static string updateButton_Content {
             get {
                 return ResourceManager.GetString("updateButton_Content", resourceCulture);
             }
@@ -324,7 +324,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Please read the release notes carefully. Then decide whether to update..
         /// </summary>
-        internal static string updatePromptBody {
+        public static string updatePromptBody {
             get {
                 return ResourceManager.GetString("updatePromptBody", resourceCulture);
             }
@@ -333,7 +333,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to An update is available..
         /// </summary>
-        internal static string updatePromptTitle {
+        public static string updatePromptTitle {
             get {
                 return ResourceManager.GetString("updatePromptTitle", resourceCulture);
             }
@@ -342,7 +342,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to Username.
         /// </summary>
-        internal static string Username {
+        public static string Username {
             get {
                 return ResourceManager.GetString("Username", resourceCulture);
             }
@@ -351,7 +351,7 @@ namespace Shadowsocks.Localization {
         /// <summary>
         ///   Looks up a localized string similar to VersionUpdate.
         /// </summary>
-        internal static string VersionUpdate {
+        public static string VersionUpdate {
             get {
                 return ResourceManager.GetString("VersionUpdate", resourceCulture);
             }

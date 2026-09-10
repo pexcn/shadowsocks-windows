@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.29709.97
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "shadowsocks-csharp", "shadowsocks-csharp\shadowsocks-csharp.csproj", "{8C02D2F7-7CDB-4D55-9F25-CD03EF4AA062}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "shadowsocks-localization", "shadowsocks-localization\shadowsocks-localization.csproj", "{92AA941B-C6CD-435C-8719-8BB3FE1059A8}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ShadowsocksTest", "test\ShadowsocksTest.csproj", "{45913187-0685-4903-B250-DCEF0479CD86}"
 	ProjectSection(ProjectDependencies) = postProject
 		{8C02D2F7-7CDB-4D55-9F25-CD03EF4AA062} = {8C02D2F7-7CDB-4D55-9F25-CD03EF4AA062}
@@ -30,6 +32,12 @@ Global
 		{45913187-0685-4903-B250-DCEF0479CD86}.Release|Any CPU.ActiveCfg = Release|x64
 		{45913187-0685-4903-B250-DCEF0479CD86}.Release|x64.ActiveCfg = Release|x64
 		{45913187-0685-4903-B250-DCEF0479CD86}.Release|x64.Build.0 = Release|x64
+		{92AA941B-C6CD-435C-8719-8BB3FE1059A8}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{92AA941B-C6CD-435C-8719-8BB3FE1059A8}.Debug|x64.ActiveCfg = Debug|x64
+		{92AA941B-C6CD-435C-8719-8BB3FE1059A8}.Debug|x64.Build.0 = Debug|x64
+		{92AA941B-C6CD-435C-8719-8BB3FE1059A8}.Release|Any CPU.ActiveCfg = Release|x64
+		{92AA941B-C6CD-435C-8719-8BB3FE1059A8}.Release|x64.ActiveCfg = Release|x64
+		{92AA941B-C6CD-435C-8719-8BB3FE1059A8}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

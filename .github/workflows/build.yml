@@ -23,18 +23,15 @@ jobs:
       - name: Test
         run: dotnet test test/ShadowsocksTest.csproj -c Release
 
-      # Costura.Fody merges every dependency into Shadowsocks.exe, so the app ships
-      # as that executable plus the satellite assemblies in the culture folders --
-      # the loose DLLs dotnet publish also emits are already inside the exe.
+      # Costura.Fody merges every dependency into Shadowsocks.exe, the localized
+      # strings among them, so the app ships as that one file. Everything else
+      # dotnet publish emits is already inside the exe.
       - name: Publish
         shell: pwsh
         run: |
           dotnet publish shadowsocks-csharp/shadowsocks-csharp.csproj -c Release -o out
-          New-Item -ItemType Directory publish/Shadowsocks | Out-Null
-          Copy-Item out/Shadowsocks.exe publish/Shadowsocks
-          Get-ChildItem out -Directory |
-            Where-Object { Test-Path "$($_.FullName)/Shadowsocks.resources.dll" } |
-            Copy-Item -Destination publish/Shadowsocks -Recurse
+          New-Item -ItemType Directory publish | Out-Null
+          Copy-Item out/Shadowsocks.exe publish
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -46,7 +43,7 @@ jobs:
       - name: Package release archive
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
-        run: Compress-Archive -Path publish/Shadowsocks -DestinationPath Shadowsocks.zip
+        run: Compress-Archive -Path publish/Shadowsocks.exe -DestinationPath Shadowsocks.zip
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/')

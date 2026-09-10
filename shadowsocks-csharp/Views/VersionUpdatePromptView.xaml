@@ -11,7 +11,7 @@
     xmlns:mdxam="clr-namespace:MdXaml;assembly=MdXaml"
     xmlns:lex="http://wpflocalizeextension.codeplex.com"
     lex:LocalizeDictionary.DesignCulture="en"
-    lex:ResxLocalizationProvider.DefaultAssembly="Shadowsocks"
+    lex:ResxLocalizationProvider.DefaultAssembly="Shadowsocks.Localization"
     lex:ResxLocalizationProvider.DefaultDictionary="Strings"
     mc:Ignorable="d" 
     d:DesignHeight="480" d:DesignWidth="640">
