@@ -232,7 +232,10 @@ namespace Shadowsocks.Controller
         private readonly byte[] _connetionRecvBuffer = new byte[BufferSize];
 
         // local proxy -> remote (plaintext, after decrypt)
-        private readonly byte[] _remoteSendBuffer = new byte[DecryptedBufferSize];
+        // Sized in CreateRemote, once the method is known: only the 2022 methods
+        // can hand back more than BufferSize in one go, and reserving room for
+        // one of their 0xFFFF chunks costs every other connection 49 KB.
+        private byte[] _remoteSendBuffer;
 
         // local proxy -> client (ciphertext, before decrypt)
         private readonly byte[] _connetionSendBuffer = new byte[BufferSize];
@@ -275,6 +278,11 @@ namespace Shadowsocks.Controller
             }
 
             _encryptor = EncryptorFactory.GetEncryptor(server.method, server.password);
+
+            // Nothing reads _remoteSendBuffer before StartPipe, so it can wait
+            // until here, where the method that decides its size is known.
+            _remoteSendBuffer = new byte[
+                _encryptor is AEAD2022Encryptor ? DecryptedBufferSize : BufferSize];
 
             _server = server;
 

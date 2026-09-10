@@ -100,7 +100,7 @@ namespace Shadowsocks.Encryption.AEAD
         // Salt length equals key length for all three methods.
         private readonly int _keyLen;
 
-        // Stream framing only, and together they come to about 130 KB. A UDP
+        // Stream framing only, and together they come to about 70 KB. A UDP
         // handler holds its encryptor for the life of the session without ever
         // touching these, and the relay caches hundreds of handlers, so they
         // are built on first use rather than in the constructor.
@@ -243,7 +243,7 @@ namespace Shadowsocks.Encryption.AEAD
         {
             if (_encCircularBuffer == null)
             {
-                _encCircularBuffer = new ByteCircularBuffer(MAX_INPUT_SIZE * 2);
+                _encCircularBuffer = new ByteCircularBuffer(SEND_BUFFER_SIZE);
             }
             _encCircularBuffer.Put(buf, 0, length);
             outlength = 0;

@@ -23,7 +23,7 @@ namespace Shadowsocks.Encryption.AEAD
 
         // every connection should create its own buffer, and only a TCP one
         // needs them at all: a UDP handler now keeps its encryptor for the life
-        // of the session, and 128 KB apiece across a cache of hundreds of
+        // of the session, and 68 KB apiece across a cache of hundreds of
         // handlers is worth not allocating until something streams.
         private ByteCircularBuffer _encCircularBuffer;
         private ByteCircularBuffer _decCircularBuffer;
@@ -158,7 +158,7 @@ namespace Shadowsocks.Encryption.AEAD
         {
             if (_encCircularBuffer == null)
             {
-                _encCircularBuffer = new ByteCircularBuffer(MAX_INPUT_SIZE * 2);
+                _encCircularBuffer = new ByteCircularBuffer(SEND_BUFFER_SIZE);
             }
 
             _encCircularBuffer.Put(buf, 0, length);

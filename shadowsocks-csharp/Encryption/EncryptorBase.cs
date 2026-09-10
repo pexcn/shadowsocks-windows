@@ -1,4 +1,6 @@
-﻿namespace Shadowsocks.Encryption
+﻿using Shadowsocks.Controller;
+
+namespace Shadowsocks.Encryption
 {
     public class EncryptorInfo
     {
@@ -62,6 +64,17 @@
         : IEncryptor
     {
         public const int MAX_INPUT_SIZE = 32768;
+
+        /// <summary>
+        /// Capacity of the send-side circular buffer of a TCP connection.
+        /// Encrypt is handed one read at a time -- TCPHandler.RecvSize bytes at
+        /// most -- and frames all of it before returning, since the "outbuf
+        /// full" guards in the chunk loops cannot fire at that input size. So
+        /// nothing is ever carried from one call to the next, and two reads'
+        /// worth is already margin: MAX_INPUT_SIZE * 2 left about 62 KB per
+        /// connection allocated and never touched.
+        /// </summary>
+        public const int SEND_BUFFER_SIZE = TCPHandler.RecvSize * 2;
 
         public const int MAX_DOMAIN_LEN = 255;
         public const int ADDR_PORT_LEN = 2;
