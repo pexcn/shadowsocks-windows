@@ -176,8 +176,14 @@ namespace Shadowsocks.Controller
                         {
                             Receive();
                         }
-                        catch (ObjectDisposedException)
+                        catch (Exception e)
                         {
+                            // Nothing may escape a finally here: this runs on an
+                            // IOCP thread, and an exception that leaves a thread
+                            // pool thread unhandled kills the process. A handler
+                            // that cannot re-arm goes deaf, but at least it does
+                            // not take everything else with it.
+                            logger.LogUsefulException(e);
                         }
                     }
                 }
