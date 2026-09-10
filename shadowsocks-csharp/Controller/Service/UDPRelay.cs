@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using NLog;
 using Shadowsocks.Controller.Strategy;
 using Shadowsocks.Encryption;
+using Shadowsocks.Encryption.Exception;
 using Shadowsocks.Model;
 
 namespace Shadowsocks.Controller
@@ -58,6 +59,12 @@ namespace Shadowsocks.Controller
             private Server _server;
             private byte[] _buffer = new byte[65536];
 
+            // One per handler, not one per datagram: the 2022 methods carry a
+            // session id, a packet id counter and a replay window across the
+            // packets of a session, and rebuilding it each time would throw all
+            // of that away.
+            private readonly IEncryptor _encryptor;
+
             private IPEndPoint _localEndPoint;
             private IPEndPoint _remoteEndPoint;
 
@@ -91,31 +98,25 @@ namespace Shadowsocks.Controller
                 _remoteEndPoint = new IPEndPoint(ipAddress, server.server_port);
                 _remote = new Socket(_remoteEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
                 _remote.Bind(new IPEndPoint(GetIPAddress(), 0));
-            }
 
-            // SIP022 UDP is a separate, session-based construction that this
-            // per-packet path cannot express, so those methods throw. Say so
-            // once per handler instead of on every datagram.
-            private bool _udpUnsupportedLogged;
+                _encryptor = EncryptorFactory.GetEncryptor(server.method, server.password);
+            }
 
             public void Send(byte[] data, int length)
             {
-                IEncryptor encryptor = EncryptorFactory.GetEncryptor(_server.method, _server.password);
                 byte[] dataIn = new byte[length - 3];
                 Array.Copy(data, 3, dataIn, 0, length - 3);
                 byte[] dataOut = new byte[65536];  // enough space for AEAD ciphers
                 int outlen;
                 try
                 {
-                    encryptor.EncryptUDP(dataIn, length - 3, dataOut, out outlen);
+                    _encryptor.EncryptUDP(dataIn, length - 3, dataOut, out outlen);
                 }
-                catch (NotSupportedException e)
+                catch (CryptoErrorException e)
                 {
-                    if (!_udpUnsupportedLogged)
-                    {
-                        _udpUnsupportedLogged = true;
-                        logger.Warn(e.Message);
-                    }
+                    // Drop the datagram rather than the session: UDP is lossy
+                    // anyway, and the next packet may well be fine.
+                    logger.Warn($"UDP encryption failed, dropping the packet: {e.Message}");
                     return;
                 }
                 logger.Debug(_localEndPoint, _remoteEndPoint, outlen, "UDP Relay");
@@ -131,6 +132,7 @@ namespace Shadowsocks.Controller
 
             public void RecvFromCallback(IAsyncResult ar)
             {
+                bool disposed = false;
                 try
                 {
                     if (_remote == null) return;
@@ -140,29 +142,44 @@ namespace Shadowsocks.Controller
                     byte[] dataOut = new byte[bytesRead];
                     int outlen;
 
-                    IEncryptor encryptor = EncryptorFactory.GetEncryptor(_server.method, _server.password);
-                    encryptor.DecryptUDP(_buffer, bytesRead, dataOut, out outlen);
+                    _encryptor.DecryptUDP(_buffer, bytesRead, dataOut, out outlen);
 
                     byte[] sendBuf = new byte[outlen + 3];
                     Array.Copy(dataOut, 0, sendBuf, 3, outlen);
 
                     logger.Debug(_localEndPoint, _remoteEndPoint, outlen, "UDP Relay");
                     _local?.SendTo(sendBuf, outlen + 3, 0, _localEndPoint);
-
-                    Receive();
                 }
                 catch (ObjectDisposedException)
                 {
-                    // TODO: handle the ObjectDisposedException
+                    disposed = true;
                 }
-                catch (Exception)
+                catch (CryptoErrorException e)
                 {
-                    // TODO: need more think about handle other Exceptions, or should remove this catch().
+                    // A packet that fails to authenticate, repeats a packet id
+                    // or arrives too late is exactly what the 2022 methods are
+                    // meant to refuse. Drop it and carry on.
+                    logger.Debug($"Dropping a UDP packet: {e.Message}");
+                }
+                catch (Exception e)
+                {
+                    logger.LogUsefulException(e);
                 }
                 finally
                 {
-                    // No matter success or failed, we keep receiving
-
+                    // Re-arm unconditionally. This used to sit at the end of the
+                    // try block, so any failure above -- a rejected packet
+                    // included -- left the handler deaf for the rest of its life.
+                    if (!disposed)
+                    {
+                        try
+                        {
+                            Receive();
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                        }
+                    }
                 }
             }
 
@@ -179,6 +196,17 @@ namespace Shadowsocks.Controller
                 catch (Exception)
                 {
                     // TODO: need more think about handle other Exceptions, or should remove this catch().
+                }
+
+                // The handler owns the encryptor now, and the LRU cache closes
+                // whatever it evicts, so this is where the native contexts go.
+                try
+                {
+                    _encryptor?.Dispose();
+                }
+                catch (Exception e)
+                {
+                    logger.LogUsefulException(e);
                 }
             }
         }

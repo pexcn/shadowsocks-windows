@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using NLog;
 using Shadowsocks.Controller;
 using Shadowsocks.Encryption.CircularBuffer;
@@ -18,7 +19,9 @@ namespace Shadowsocks.Encryption.AEAD
     /// directions open with a header, and the response header has to be checked
     /// against the request before any payload is believed.
     ///
-    /// TCP only for now; UDP is a separate construction and is not implemented.
+    /// UDP is a second construction again, session-based rather than streamed;
+    /// it lives in its own region below and shares only the key and the header
+    /// validation rules with the stream side.
     /// </summary>
     public class AEAD2022Encryptor : EncryptorBase, IDisposable
     {
@@ -64,19 +67,26 @@ namespace Shadowsocks.Encryption.AEAD
             public readonly int KeySize;
             public readonly string OpenSslName;
 
-            public CipherInfo(int keySize, string openSslName)
+            /// <summary>
+            /// The two AES methods share one UDP construction and the chacha
+            /// method has its own; nothing about TCP depends on this.
+            /// </summary>
+            public readonly bool IsAes;
+
+            public CipherInfo(int keySize, string openSslName, bool isAes)
             {
                 KeySize = keySize;
                 OpenSslName = openSslName;
+                IsAes = isAes;
             }
         }
 
         private static readonly Dictionary<string, CipherInfo> _ciphers =
             new Dictionary<string, CipherInfo>
             {
-                { "2022-blake3-aes-128-gcm", new CipherInfo(16, "aes-128-gcm") },
-                { "2022-blake3-aes-256-gcm", new CipherInfo(32, "aes-256-gcm") },
-                { "2022-blake3-chacha20-poly1305", new CipherInfo(32, "chacha20-poly1305") },
+                { "2022-blake3-aes-128-gcm", new CipherInfo(16, "aes-128-gcm", true) },
+                { "2022-blake3-aes-256-gcm", new CipherInfo(32, "aes-256-gcm", true) },
+                { "2022-blake3-chacha20-poly1305", new CipherInfo(32, "chacha20-poly1305", false) },
             };
 
         public static List<string> SupportedCiphers()
@@ -90,11 +100,12 @@ namespace Shadowsocks.Encryption.AEAD
         // Salt length equals key length for all three methods.
         private readonly int _keyLen;
 
-        private readonly ByteCircularBuffer _encCircularBuffer =
-            new ByteCircularBuffer(MAX_INPUT_SIZE * 2);
-
-        private readonly ByteCircularBuffer _decCircularBuffer =
-            new ByteCircularBuffer(RecvBufferCapacity);
+        // Stream framing only, and together they come to about 130 KB. A UDP
+        // handler holds its encryptor for the life of the session without ever
+        // touching these, and the relay caches hundreds of handlers, so they
+        // are built on first use rather than in the constructor.
+        private ByteCircularBuffer _encCircularBuffer;
+        private ByteCircularBuffer _decCircularBuffer;
 
         private readonly byte[] _encNonce = new byte[NonceSize];
         private readonly byte[] _decNonce = new byte[NonceSize];
@@ -206,7 +217,12 @@ namespace Shadowsocks.Encryption.AEAD
 
         private static long ReadInt64BE(byte[] buf, int offset)
         {
-            long value = 0;
+            return (long)ReadUInt64BE(buf, offset);
+        }
+
+        private static ulong ReadUInt64BE(byte[] buf, int offset)
+        {
+            ulong value = 0;
             for (int i = 0; i < 8; i++)
             {
                 value = (value << 8) | buf[offset + i];
@@ -218,6 +234,10 @@ namespace Shadowsocks.Encryption.AEAD
 
         public override void Encrypt(byte[] buf, int length, byte[] outbuf, out int outlength)
         {
+            if (_encCircularBuffer == null)
+            {
+                _encCircularBuffer = new ByteCircularBuffer(MAX_INPUT_SIZE * 2);
+            }
             _encCircularBuffer.Put(buf, 0, length);
             outlength = 0;
 
@@ -333,6 +353,10 @@ namespace Shadowsocks.Encryption.AEAD
 
         public override void Decrypt(byte[] buf, int length, byte[] outbuf, out int outlength)
         {
+            if (_decCircularBuffer == null)
+            {
+                _decCircularBuffer = new ByteCircularBuffer(RecvBufferCapacity);
+            }
             _decCircularBuffer.Put(buf, 0, length);
             outlength = 0;
 
@@ -456,21 +480,400 @@ namespace Shadowsocks.Encryption.AEAD
 
         #region UDP
 
-        // SIP022 UDP is a session-based construction with its own separate
-        // header, packet ids and replay window, and none of it is reachable
-        // through this interface's per-packet shape. Failing loudly beats
-        // emitting packets the server will silently drop.
-        private const string UdpNotSupported =
-            "SIP022 UDP is not implemented; turn off UDP relaying for this server";
+        // SIP022 UDP is a separate construction from the stream above: each
+        // packet stands alone, keyed by a session id rather than a salt, with a
+        // monotonic packet id in place of the nonce counter and a replay window
+        // instead of ordering. The two families differ again -- the AES methods
+        // put the session and packet ids in a 16-byte header encrypted with the
+        // PSK as a raw AES block, while the chacha method carries them inside
+        // the body and seals the lot with XChaCha20-Poly1305 under the PSK.
+        //
+        // One lock covers all of it: Send and the receive callback run on
+        // different threads, and they share the client session id, the AES-ECB
+        // transforms and the server session table.
+        private readonly object _udpLock = new object();
+
+        private const int UdpSessionIdSize = 8;
+        private const int UdpPacketIdSize = 8;
+        private const int UdpSeparateHeaderSize = UdpSessionIdSize + UdpPacketIdSize;
+        private const int PaddingLenBytes = 2;
+        private const int XChaChaNonceSize = 24;
+
+        private const byte HeaderTypeClientPacket = 0x00;
+        private const byte HeaderTypeServerPacket = 0x01;
+
+        // Body prefix ahead of the padding, client to server.
+        private const int UdpClientHeaderSize = 1 + TimestampSize + PaddingLenBytes;
+        // Same, server to client: it also echoes our session id.
+        private const int UdpServerHeaderSize =
+            1 + TimestampSize + UdpSessionIdSize + PaddingLenBytes;
+
+        // The chacha method has no separate header, so both bodies are preceded
+        // by the session and packet ids instead.
+        private const int UdpInlineIdsSize = UdpSessionIdSize + UdpPacketIdSize;
+
+        private byte[] _udpClientSessionId;
+        private ulong _udpClientPacketId;
+        private AeadCipher _udpEncCipher;
+        private Aes _udpEcb;
+        private ICryptoTransform _udpEcbEncrypt;
+        private ICryptoTransform _udpEcbDecrypt;
+
+        /// <summary>
+        /// One of the server's sessions. SIP022 lets a server answer from a new
+        /// session at any time, and requires a client to keep at least the
+        /// current one and the one before it.
+        /// </summary>
+        private sealed class ServerSession
+        {
+            public readonly ulong SessionId;
+            // null for the chacha method, which keys every packet off the PSK.
+            public readonly AeadCipher Cipher;
+            public readonly SlidingWindow Window = new SlidingWindow();
+
+            public ServerSession(ulong sessionId, AeadCipher cipher)
+            {
+                SessionId = sessionId;
+                Cipher = cipher;
+            }
+        }
+
+        private ServerSession _udpServerSession;
+        private ServerSession _udpPreviousServerSession;
 
         public override void EncryptUDP(byte[] buf, int length, byte[] outbuf, out int outlength)
         {
-            throw new NotSupportedException($"{Method}: {UdpNotSupported}");
+            lock (_udpLock)
+            {
+                EnsureUdpClientSession();
+                outlength = _info.IsAes
+                    ? EncryptUdpAes(buf, length, outbuf)
+                    : EncryptUdpXChaCha(buf, length, outbuf);
+            }
         }
 
         public override void DecryptUDP(byte[] buf, int length, byte[] outbuf, out int outlength)
         {
-            throw new NotSupportedException($"{Method}: {UdpNotSupported}");
+            lock (_udpLock)
+            {
+                if (_udpClientSessionId == null)
+                {
+                    throw new CryptoErrorException("2022: a UDP reply arrived before anything was sent");
+                }
+                outlength = _info.IsAes
+                    ? DecryptUdpAes(buf, length, outbuf)
+                    : DecryptUdpXChaCha(buf, length, outbuf);
+            }
+        }
+
+        private void EnsureUdpClientSession()
+        {
+            if (_udpClientSessionId != null)
+            {
+                return;
+            }
+
+            _udpClientSessionId = new byte[UdpSessionIdSize];
+            RNG.GetBytes(_udpClientSessionId, UdpSessionIdSize);
+
+            if (!_info.IsAes)
+            {
+                // XChaCha20-Poly1305 straight off the PSK: nothing to set up.
+                return;
+            }
+
+            byte[] subkey = new byte[_keyLen];
+            Blake3.DeriveSessionSubkey(_psk, _udpClientSessionId, subkey);
+            _udpEncCipher = new AeadCipher(_info.OpenSslName, subkey, true);
+
+            _udpEcb = Aes.Create();
+            _udpEcb.Mode = CipherMode.ECB;
+            _udpEcb.Padding = PaddingMode.None;
+            _udpEcb.Key = _psk;
+            _udpEcbEncrypt = _udpEcb.CreateEncryptor();
+            _udpEcbDecrypt = _udpEcb.CreateDecryptor();
+        }
+
+        /// <summary>
+        /// type || timestamp || padding length || padding || the caller's bytes.
+        /// The caller hands us a SOCKS5 address followed by the payload, which
+        /// is the order the header wants them in, so they go in untouched.
+        /// </summary>
+        private void WriteUdpClientBody(byte[] body, int offset, byte[] buf, int length)
+        {
+            body[offset] = HeaderTypeClientPacket;
+            WriteUInt64BE(body, offset + 1, (ulong)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            // No padding: SIP022 permits it on UDP but does not ask for it, and
+            // a length of zero keeps the packet the size the caller expects.
+            WriteUInt16BE(body, offset + 1 + TimestampSize, 0);
+            Buffer.BlockCopy(buf, 0, body, offset + UdpClientHeaderSize, length);
+        }
+
+        private int EncryptUdpAes(byte[] buf, int length, byte[] outbuf)
+        {
+            int bodyLen = UdpClientHeaderSize + length;
+            int packetLen = UdpSeparateHeaderSize + bodyLen + TagSize;
+            if (packetLen > outbuf.Length)
+            {
+                throw new CryptoErrorException("2022: UDP packet does not fit the output buffer");
+            }
+
+            byte[] separateHeader = new byte[UdpSeparateHeaderSize];
+            Buffer.BlockCopy(_udpClientSessionId, 0, separateHeader, 0, UdpSessionIdSize);
+            WriteUInt64BE(separateHeader, UdpSessionIdSize, _udpClientPacketId++);
+
+            // The nonce comes out of the plaintext separate header, not the
+            // encrypted one the server sees first.
+            byte[] nonce = new byte[NonceSize];
+            Buffer.BlockCopy(separateHeader, UdpSeparateHeaderSize - NonceSize, nonce, 0, NonceSize);
+
+            byte[] body = new byte[bodyLen];
+            WriteUdpClientBody(body, 0, buf, length);
+
+            _udpEcbEncrypt.TransformBlock(separateHeader, 0, UdpSeparateHeaderSize, outbuf, 0);
+            _udpEncCipher.Seal(nonce, body, bodyLen, outbuf, UdpSeparateHeaderSize);
+            return packetLen;
+        }
+
+        private int EncryptUdpXChaCha(byte[] buf, int length, byte[] outbuf)
+        {
+            int bodyLen = UdpInlineIdsSize + UdpClientHeaderSize + length;
+            int packetLen = XChaChaNonceSize + bodyLen + TagSize;
+            if (packetLen > outbuf.Length)
+            {
+                throw new CryptoErrorException("2022: UDP packet does not fit the output buffer");
+            }
+
+            byte[] nonce = new byte[XChaChaNonceSize];
+            RNG.GetBytes(nonce, XChaChaNonceSize);
+
+            byte[] body = new byte[bodyLen];
+            Buffer.BlockCopy(_udpClientSessionId, 0, body, 0, UdpSessionIdSize);
+            WriteUInt64BE(body, UdpSessionIdSize, _udpClientPacketId++);
+            WriteUdpClientBody(body, UdpInlineIdsSize, buf, length);
+
+            byte[] sealedBody = new byte[bodyLen + TagSize];
+            ulong sealedLen = 0;
+            int ret = Sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+                sealedBody, ref sealedLen,
+                body, (ulong)bodyLen,
+                null, 0,
+                null, nonce,
+                _psk);
+            if (ret != 0)
+            {
+                throw new CryptoErrorException($"2022: xchacha20-poly1305 seal failed, ret {ret}");
+            }
+
+            Buffer.BlockCopy(nonce, 0, outbuf, 0, XChaChaNonceSize);
+            Buffer.BlockCopy(sealedBody, 0, outbuf, XChaChaNonceSize, (int)sealedLen);
+            return XChaChaNonceSize + (int)sealedLen;
+        }
+
+        private int DecryptUdpAes(byte[] buf, int length, byte[] outbuf)
+        {
+            if (length < UdpSeparateHeaderSize + TagSize)
+            {
+                throw new CryptoErrorException("2022: UDP packet is too short to hold a header");
+            }
+
+            byte[] separateHeader = new byte[UdpSeparateHeaderSize];
+            _udpEcbDecrypt.TransformBlock(buf, 0, UdpSeparateHeaderSize, separateHeader, 0);
+
+            byte[] sessionIdBytes = new byte[UdpSessionIdSize];
+            Buffer.BlockCopy(separateHeader, 0, sessionIdBytes, 0, UdpSessionIdSize);
+            ulong packetId = ReadUInt64BE(separateHeader, UdpSessionIdSize);
+
+            // The separate header is only ECB-encrypted, never authenticated, so
+            // nothing it says may change our state until the body opens.
+            ServerSession known = FindServerSession(ReadUInt64BE(separateHeader, 0));
+            ServerSession candidate = known
+                ?? CreateServerSession(ReadUInt64BE(separateHeader, 0), sessionIdBytes);
+            try
+            {
+                byte[] nonce = new byte[NonceSize];
+                Buffer.BlockCopy(separateHeader, UdpSeparateHeaderSize - NonceSize, nonce, 0, NonceSize);
+
+                int sealedLen = length - UdpSeparateHeaderSize;
+                byte[] sealedBody = new byte[sealedLen];
+                Buffer.BlockCopy(buf, UdpSeparateHeaderSize, sealedBody, 0, sealedLen);
+
+                byte[] body = new byte[sealedLen - TagSize];
+                int bodyLen = candidate.Cipher.Open(nonce, sealedBody, sealedLen, body, 0);
+
+                int outlength = UnwrapUdpServerBody(body, bodyLen, 0, packetId, candidate, outbuf);
+                if (known == null)
+                {
+                    CommitServerSession(candidate);
+                    candidate = null;
+                }
+                return outlength;
+            }
+            finally
+            {
+                // Still uncommitted here means the packet was refused.
+                if (known == null)
+                {
+                    candidate?.Cipher?.Dispose();
+                }
+            }
+        }
+
+        private int DecryptUdpXChaCha(byte[] buf, int length, byte[] outbuf)
+        {
+            if (length < XChaChaNonceSize + UdpInlineIdsSize + TagSize)
+            {
+                throw new CryptoErrorException("2022: UDP packet is too short to hold a header");
+            }
+
+            byte[] nonce = new byte[XChaChaNonceSize];
+            Buffer.BlockCopy(buf, 0, nonce, 0, XChaChaNonceSize);
+
+            int sealedLen = length - XChaChaNonceSize;
+            byte[] sealedBody = new byte[sealedLen];
+            Buffer.BlockCopy(buf, XChaChaNonceSize, sealedBody, 0, sealedLen);
+
+            byte[] body = new byte[sealedLen - TagSize];
+            ulong bodyLen = 0;
+            int ret = Sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+                body, ref bodyLen,
+                null,
+                sealedBody, (ulong)sealedLen,
+                null, 0,
+                nonce, _psk);
+            if (ret != 0)
+            {
+                throw new CryptoErrorException($"2022: xchacha20-poly1305 open failed, ret {ret}");
+            }
+
+            // Here the ids come out of an already-authenticated body, but the
+            // session table still only moves once the header checks out.
+            ulong serverSessionId = ReadUInt64BE(body, 0);
+            ulong packetId = ReadUInt64BE(body, UdpSessionIdSize);
+
+            ServerSession known = FindServerSession(serverSessionId);
+            ServerSession candidate = known ?? CreateServerSession(serverSessionId, null);
+
+            int outlength = UnwrapUdpServerBody(body, (int)bodyLen, UdpInlineIdsSize, packetId,
+                candidate, outbuf);
+            if (known == null)
+            {
+                CommitServerSession(candidate);
+            }
+            return outlength;
+        }
+
+        /// <summary>
+        /// Validates the server's message header and copies out what follows it,
+        /// which is already the SOCKS5 address plus payload the relay wants.
+        /// </summary>
+        private int UnwrapUdpServerBody(byte[] body, int bodyLen, int offset, ulong packetId,
+            ServerSession session, byte[] outbuf)
+        {
+            if (bodyLen - offset < UdpServerHeaderSize)
+            {
+                throw new CryptoErrorException("2022: UDP reply header is truncated");
+            }
+
+            if (body[offset] != HeaderTypeServerPacket)
+            {
+                throw new CryptoErrorException(
+                    $"2022: UDP reply header type is {body[offset]}, expected 1");
+            }
+
+            long timestamp = ReadInt64BE(body, offset + 1);
+            long skew = Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp);
+            if (skew > MaxTimestampSkewSeconds)
+            {
+                throw new CryptoErrorException(
+                    $"2022: UDP reply timestamp is {skew}s away from now, treating it as a replay");
+            }
+
+            int echoOffset = offset + 1 + TimestampSize;
+            for (int i = 0; i < UdpSessionIdSize; i++)
+            {
+                if (body[echoOffset + i] != _udpClientSessionId[i])
+                {
+                    throw new CryptoErrorException("2022: UDP reply is for another client session");
+                }
+            }
+
+            int padLen = ReadUInt16BE(body, echoOffset + UdpSessionIdSize);
+            int payloadOffset = offset + UdpServerHeaderSize + padLen;
+            if (payloadOffset > bodyLen)
+            {
+                throw new CryptoErrorException("2022: UDP reply padding runs past the packet");
+            }
+
+            // Only now, with the header believed: SIP022 says the window moves
+            // on validated packets, so a forged id cannot push it forward.
+            if (!session.Window.TryAccept(packetId))
+            {
+                throw new CryptoErrorException($"2022: UDP packet id {packetId} is a replay or too old");
+            }
+
+            int payloadLen = bodyLen - payloadOffset;
+            if (payloadLen > outbuf.Length)
+            {
+                throw new CryptoErrorException("2022: UDP reply does not fit the output buffer");
+            }
+            Buffer.BlockCopy(body, payloadOffset, outbuf, 0, payloadLen);
+            return payloadLen;
+        }
+
+        private ServerSession FindServerSession(ulong sessionId)
+        {
+            if (_udpServerSession != null && _udpServerSession.SessionId == sessionId)
+            {
+                return _udpServerSession;
+            }
+            if (_udpPreviousServerSession != null && _udpPreviousServerSession.SessionId == sessionId)
+            {
+                return _udpPreviousServerSession;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Builds a session without recording it. The caller records it only
+        /// once a packet from it has actually been believed.
+        /// </summary>
+        private ServerSession CreateServerSession(ulong sessionId, byte[] sessionIdBytes)
+        {
+            AeadCipher cipher = null;
+            if (_info.IsAes)
+            {
+                byte[] subkey = new byte[_keyLen];
+                Blake3.DeriveSessionSubkey(_psk, sessionIdBytes, subkey);
+                cipher = new AeadCipher(_info.OpenSslName, subkey, false);
+            }
+            return new ServerSession(sessionId, cipher);
+        }
+
+        private void CommitServerSession(ServerSession session)
+        {
+            // Keep the current one and the one before it, which is the least
+            // SIP022 allows a client to remember; the third oldest is dropped.
+            _udpPreviousServerSession?.Cipher?.Dispose();
+            _udpPreviousServerSession = _udpServerSession;
+            _udpServerSession = session;
+            logger.Debug($"2022: tracking UDP server session {session.SessionId:x16}");
+        }
+
+        private void DisposeUdp()
+        {
+            _udpEncCipher?.Dispose();
+            _udpEncCipher = null;
+            _udpServerSession?.Cipher?.Dispose();
+            _udpServerSession = null;
+            _udpPreviousServerSession?.Cipher?.Dispose();
+            _udpPreviousServerSession = null;
+            _udpEcbEncrypt?.Dispose();
+            _udpEcbEncrypt = null;
+            _udpEcbDecrypt?.Dispose();
+            _udpEcbDecrypt = null;
+            _udpEcb?.Dispose();
+            _udpEcb = null;
         }
 
         #endregion
@@ -481,6 +884,10 @@ namespace Shadowsocks.Encryption.AEAD
             _encCipher = null;
             _decCipher?.Dispose();
             _decCipher = null;
+            lock (_udpLock)
+            {
+                DisposeUdp();
+            }
         }
     }
 }

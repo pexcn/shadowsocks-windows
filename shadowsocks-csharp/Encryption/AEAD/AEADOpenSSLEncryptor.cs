@@ -51,12 +51,18 @@ namespace Shadowsocks.Encryption.AEAD
             IntPtr ctx = OpenSSL.EVP_CIPHER_CTX_new();
             if (ctx == IntPtr.Zero) throw new System.Exception("openssl: fail to create ctx");
 
+            // UDP re-inits per packet, and the encryptor is now held for the
+            // life of a UDP handler rather than rebuilt each time, so the
+            // context this replaces has to be freed here. It used to be
+            // unreachable-but-alive, which the finalizer could never collect.
             if (isEncrypt)
             {
+                if (_encryptCtx != IntPtr.Zero) OpenSSL.EVP_CIPHER_CTX_free(_encryptCtx);
                 _encryptCtx = ctx;
             }
             else
             {
+                if (_decryptCtx != IntPtr.Zero) OpenSSL.EVP_CIPHER_CTX_free(_decryptCtx);
                 _decryptCtx = ctx;
             }
 

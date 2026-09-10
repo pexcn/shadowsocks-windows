@@ -21,9 +21,12 @@ namespace Shadowsocks.Encryption.AEAD
         // for UDP only
         protected static byte[] _udpTmpBuf = new byte[65536];
 
-        // every connection should create its own buffer
-        private ByteCircularBuffer _encCircularBuffer = new ByteCircularBuffer(MAX_INPUT_SIZE * 2);
-        private ByteCircularBuffer _decCircularBuffer = new ByteCircularBuffer(MAX_INPUT_SIZE * 2);
+        // every connection should create its own buffer, and only a TCP one
+        // needs them at all: a UDP handler now keeps its encryptor for the life
+        // of the session, and 128 KB apiece across a cache of hundreds of
+        // handlers is worth not allocating until something streams.
+        private ByteCircularBuffer _encCircularBuffer;
+        private ByteCircularBuffer _decCircularBuffer;
 
         public const int CHUNK_LEN_BYTES = 2;
         public const uint CHUNK_LEN_MASK = 0x3FFFu;
@@ -153,7 +156,10 @@ namespace Shadowsocks.Encryption.AEAD
 
         public override void Encrypt(byte[] buf, int length, byte[] outbuf, out int outlength)
         {
-            Debug.Assert(_encCircularBuffer != null, "_encCircularBuffer != null");
+            if (_encCircularBuffer == null)
+            {
+                _encCircularBuffer = new ByteCircularBuffer(MAX_INPUT_SIZE * 2);
+            }
 
             _encCircularBuffer.Put(buf, 0, length);
             outlength = 0;
@@ -211,7 +217,10 @@ namespace Shadowsocks.Encryption.AEAD
 
         public override void Decrypt(byte[] buf, int length, byte[] outbuf, out int outlength)
         {
-            Debug.Assert(_decCircularBuffer != null, "_decCircularBuffer != null");
+            if (_decCircularBuffer == null)
+            {
+                _decCircularBuffer = new ByteCircularBuffer(MAX_INPUT_SIZE * 2);
+            }
             int bufSize;
             outlength = 0;
             // drop all into buffer
