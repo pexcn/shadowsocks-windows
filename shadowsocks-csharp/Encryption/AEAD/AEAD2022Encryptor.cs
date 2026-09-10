@@ -121,6 +121,13 @@ namespace Shadowsocks.Encryption.AEAD
         private bool _firstResponseChunkPending;
         private int _firstResponseChunkLen;
 
+        // Length of the chunk currently being assembled, once its header has
+        // been opened, or -1 while there is no chunk in flight. Opening that
+        // header is not a commitment -- the nonce may not advance until the
+        // whole payload is in hand -- so without somewhere to keep the result,
+        // every read that fell short re-opened the same 18 bytes.
+        private int _pendingChunkLen = -1;
+
         public AEAD2022Encryptor(string method, string password)
             : base(method, password)
         {
@@ -394,18 +401,24 @@ namespace Shadowsocks.Encryption.AEAD
 
             while (true)
             {
-                if (_decCircularBuffer.Size <= ChunkLenBytes + TagSize)
+                if (_pendingChunkLen < 0)
                 {
-                    return;
+                    if (_decCircularBuffer.Size <= ChunkLenBytes + TagSize)
+                    {
+                        return;
+                    }
+
+                    // Peeked, not consumed: the payload may not have arrived
+                    // yet, and the nonce must not move until we commit to the
+                    // chunk. The length is kept so that a chunk spread over
+                    // several reads is not re-opened once per read.
+                    byte[] sealedLen = _decCircularBuffer.Peek(ChunkLenBytes + TagSize);
+                    byte[] lenBytes = new byte[ChunkLenBytes];
+                    _decCipher.Open(_decNonce, sealedLen, sealedLen.Length, lenBytes, 0);
+                    _pendingChunkLen = ReadUInt16BE(lenBytes, 0);
                 }
 
-                // Peeked, not consumed: the payload may not have arrived yet,
-                // and the nonce must not move until we commit to the chunk.
-                byte[] sealedLen = _decCircularBuffer.Peek(ChunkLenBytes + TagSize);
-                byte[] lenBytes = new byte[ChunkLenBytes];
-                _decCipher.Open(_decNonce, sealedLen, sealedLen.Length, lenBytes, 0);
-                int chunkLen = ReadUInt16BE(lenBytes, 0);
-
+                int chunkLen = _pendingChunkLen;
                 if (_decCircularBuffer.Size < ChunkLenBytes + TagSize + chunkLen + TagSize)
                 {
                     logger.Trace("not enough data for one chunk yet");
@@ -419,6 +432,7 @@ namespace Shadowsocks.Encryption.AEAD
 
                 IncrementNonce(_decNonce);
                 _decCircularBuffer.Skip(ChunkLenBytes + TagSize);
+                _pendingChunkLen = -1;
 
                 byte[] sealedChunk = _decCircularBuffer.Get(chunkLen + TagSize);
                 outlength += _decCipher.Open(_decNonce, sealedChunk, sealedChunk.Length, outbuf, outlength);
