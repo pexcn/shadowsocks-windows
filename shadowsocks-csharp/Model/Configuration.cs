@@ -123,7 +123,11 @@ namespace Shadowsocks.Model
                     {
                         ObjectCreationHandling = ObjectCreationHandling.Replace
                     });
-                    return config;
+                    // An empty or "null" file deserializes to null without throwing,
+                    // so fall back to defaults instead of handing out a null config.
+                    if (config != null)
+                        return config;
+                    logger.Warn($"{CONFIG_FILE} is empty or invalid, falling back to the default configuration.");
                 }
                 catch (Exception e)
                 {
@@ -175,26 +179,27 @@ namespace Shadowsocks.Model
         {
             config.configs = SortByOnlineConfig(config.configs);
 
-            FileStream configFileStream = null;
-            StreamWriter configStreamWriter = null;
             try
             {
-                configFileStream = File.Open(CONFIG_FILE, FileMode.Create);
-                configStreamWriter = new StreamWriter(configFileStream);
+                // Serialize before touching the file: truncating first means a
+                // serialization failure or a kill during shutdown leaves a 0-byte config.
                 var jsonString = JsonConvert.SerializeObject(config, Formatting.Indented);
-                configStreamWriter.Write(jsonString);
-                configStreamWriter.Flush();
+                var tempFile = CONFIG_FILE + ".tmp";
+                using (var configFileStream = File.Open(tempFile, FileMode.Create, FileAccess.Write))
+                using (var configStreamWriter = new StreamWriter(configFileStream))
+                {
+                    configStreamWriter.Write(jsonString);
+                    configStreamWriter.Flush();
+                    configFileStream.Flush(true);
+                }
+                if (File.Exists(CONFIG_FILE))
+                    File.Replace(tempFile, CONFIG_FILE, null);
+                else
+                    File.Move(tempFile, CONFIG_FILE);
             }
             catch (Exception e)
             {
                 logger.LogUsefulException(e);
-            }
-            finally
-            {
-                if (configStreamWriter != null)
-                    configStreamWriter.Dispose();
-                if (configFileStream != null)
-                    configFileStream.Dispose();
             }
         }
 
