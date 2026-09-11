@@ -463,11 +463,30 @@ namespace Shadowsocks.View
 
             _modifiedConfiguration.portableMode = PortableModeCheckBox.Checked;
 
+            // Remember the selected server itself, not its position in the
+            // list box. Saving groups the servers by their online config
+            // group, so the position we see here may belong to a different
+            // server once the reordering is done.
+            var selectedIndex = ServersListBox.SelectedIndex;
+            var selectedServer = selectedIndex >= 0 && selectedIndex < _modifiedConfiguration.configs.Count
+                ? _modifiedConfiguration.configs[selectedIndex]
+                : null;
+
             controller.SaveServers(_modifiedConfiguration.configs, _modifiedConfiguration.localPort, _modifiedConfiguration.portableMode);
-            // SelectedIndex remains valid
-            // We handled this in event handlers, e.g. Add/DeleteButton, SelectedIndexChanged
-            // and move operations
-            controller.SelectServerIndex(ServersListBox.SelectedIndex);
+
+            if (selectedServer != null)
+            {
+                // Locate by reference: two servers may compare equal while
+                // being distinct entries in the list.
+                var savedConfigs = controller.GetCurrentConfiguration().configs;
+                var savedIndex = savedConfigs.FindIndex(server => ReferenceEquals(server, selectedServer));
+                if (savedIndex >= 0)
+                {
+                    selectedIndex = savedIndex;
+                }
+            }
+
+            controller.SelectServerIndex(selectedIndex);
             return true;
         }
 
