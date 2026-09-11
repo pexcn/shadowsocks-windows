@@ -92,21 +92,6 @@ namespace Shadowsocks.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
-        ///&lt;!-- Warning: Configuration may reset after shadowsocks upgrade. --&gt;
-        ///&lt;!-- If you messed it up, delete this file and Shadowsocks will create a new one. --&gt;
-        ///&lt;nlog xmlns=&quot;http://www.nlog-project.org/schemas/NLog.xsd&quot; xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;&gt;
-        ///  &lt;targets&gt;
-        ///    &lt;!-- This line is managed by Shadowsocks. Do not modify it unless you know what you are doing.--&gt;
-        ///    &lt;target name=&quot;file&quot; xsi:type=&quot;File&quot; fileName=&quot;ss_win_temp\shadowsocks.log&quot; writ [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string NLog_config {
-            get {
-                return ResourceManager.GetString("NLog_config", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap ss32Fill {

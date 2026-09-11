@@ -57,8 +57,9 @@ namespace Shadowsocks
 
             #region Enviroment Setup
             Directory.SetCurrentDirectory(WorkingDirectory);
-            // todo: initialize the NLog configuartion
-            Model.NLogConfig.TouchAndApplyNLogConfig();
+            // Set up logging before anything else so early failures get recorded.
+            // The verbose flag from gui-config.json is applied later by Configuration.Process.
+            Model.NLogConfig.ApplyConfiguration(false);
 
             // .NET Framework 4.7.2 on Win7 compatibility
             ServicePointManager.SecurityProtocol |=

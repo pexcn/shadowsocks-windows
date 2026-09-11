@@ -121,9 +121,8 @@ namespace Shadowsocks.Controller
             Encryption.RNG.Reload();
             // some logic in configuration updated the config when saving, we need to read it again
             _config = Configuration.Load();
+            // Configuration.Process applies the NLog configuration.
             Configuration.Process(ref _config);
-
-            NLogConfig.LoadConfiguration();
 
             logger.Info($"WPF Localization Extension|Current culture: {LocalizeDictionary.CurrentCulture}");
 
@@ -311,7 +310,7 @@ namespace Shadowsocks.Controller
         {
             _config.isVerboseLogging = enabled;
             SaveConfig(_config);
-            NLogConfig.LoadConfiguration(); // reload nlog
+            NLogConfig.ApplyConfiguration(enabled); // reload nlog
 
             VerboseLoggingStatusChanged?.Invoke(this, new EventArgs());
         }

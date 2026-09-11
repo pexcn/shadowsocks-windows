@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Windows;
 using Newtonsoft.Json;
 using NLog;
 using Shadowsocks.Controller;
@@ -40,7 +39,6 @@ namespace Shadowsocks.Model
         public bool generateLegacyUrl; // for pre-sip002 url compatibility
         public string userAgent;
 
-        //public NLogConfig.LogLevel logLevel;
         public LogViewerConfig logViewer;
         public ForwardProxyConfig proxy;
 
@@ -79,15 +77,7 @@ namespace Shadowsocks.Model
         [JsonIgnore]
         public string userAgentString; // $version substituted with numeral version in it
 
-        [JsonIgnore]
-        NLogConfig nLogConfig;
-
         private static readonly string CONFIG_FILE = "gui-config.json";
-#if DEBUG
-        private static readonly NLogConfig.LogLevel verboseLogLevel = NLogConfig.LogLevel.Trace;
-#else
-        private static readonly NLogConfig.LogLevel verboseLogLevel =  NLogConfig.LogLevel.Debug;
-#endif
 
         [JsonIgnore]
         public string LocalHost => isIPv6Enabled ? "[::1]" : "127.0.0.1";
@@ -173,28 +163,8 @@ namespace Shadowsocks.Model
             // Replace $version with the version number.
             config.userAgentString = config.userAgent.Replace("$version", config.version);
 
-            // NLog log level
-            try
-            {
-                config.nLogConfig = NLogConfig.LoadXML();
-                switch (config.nLogConfig.GetLogLevel())
-                {
-                    case NLogConfig.LogLevel.Fatal:
-                    case NLogConfig.LogLevel.Error:
-                    case NLogConfig.LogLevel.Warn:
-                    case NLogConfig.LogLevel.Info:
-                        config.isVerboseLogging = false;
-                        break;
-                    case NLogConfig.LogLevel.Debug:
-                    case NLogConfig.LogLevel.Trace:
-                        config.isVerboseLogging = true;
-                        break;
-                }
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show($"Cannot get the log level from NLog config file. Please check if the nlog config file exists with corresponding XML nodes.\n{e.Message}");
-            }
+            // isVerboseLogging is persisted in this file, so it is authoritative here.
+            NLogConfig.ApplyConfiguration(config.isVerboseLogging);
         }
 
         /// <summary>
@@ -214,9 +184,6 @@ namespace Shadowsocks.Model
                 var jsonString = JsonConvert.SerializeObject(config, Formatting.Indented);
                 configStreamWriter.Write(jsonString);
                 configStreamWriter.Flush();
-                // NLog
-                config.nLogConfig.SetLogLevel(config.isVerboseLogging ? verboseLogLevel : NLogConfig.LogLevel.Info);
-                NLogConfig.SaveXML(config.nLogConfig);
             }
             catch (Exception e)
             {

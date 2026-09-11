@@ -48,19 +48,7 @@ namespace Shadowsocks.View
             InitializeComponent();
             Icon = Icon.FromHandle(Resources.ssw128.GetHicon());
 
-            var nLogConfig = NLogConfig.LoadXML();
-            try
-            {
-                this.filename = nLogConfig.GetLogFileName();
-            }
-            catch(Exception)
-            {
-                // failed to get the file name
-            }
-            if (string.IsNullOrEmpty(this.filename))
-            {
-                LogMessageTextBox.AppendText("Cannot get the log file name from NLog config file. Please check if the nlog config file exists with corresponding XML nodes.");
-            }
+            this.filename = NLogConfig.LogFile;
 
             LogViewerConfig config = controller.GetCurrentConfiguration().logViewer;
 
