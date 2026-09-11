@@ -431,7 +431,7 @@ namespace Shadowsocks.View
 
         private void LoadCurrentConfiguration()
         {
-            _modifiedConfiguration = controller.GetCurrentConfiguration();
+            _modifiedConfiguration = controller.GetCurrentConfiguration().Clone();
             LoadServerNameListToUI(_modifiedConfiguration);
 
             _lastSelectedIndex = _modifiedConfiguration.index;

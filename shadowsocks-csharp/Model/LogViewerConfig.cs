@@ -25,6 +25,11 @@ namespace Shadowsocks.Model
             toolbarShown = false;
         }
 
+        public LogViewerConfig Clone()
+        {
+            return (LogViewerConfig)MemberwiseClone();
+        }
+
 
         #region Size
 

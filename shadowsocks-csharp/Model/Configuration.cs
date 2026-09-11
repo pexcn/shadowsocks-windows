@@ -87,6 +87,16 @@ namespace Shadowsocks.Model
                 return GetDefaultServer();
         }
 
+        public Configuration Clone()
+        {
+            var clone = (Configuration)MemberwiseClone();
+            clone.configs = configs.Select(server => server.Clone()).ToList();
+            clone.onlineConfigSource = new List<string>(onlineConfigSource);
+            clone.logViewer = logViewer.Clone();
+            clone.proxy = proxy.Clone();
+            return clone;
+        }
+
         /// <summary>
         /// Used by multiple forms to validate a server.
         /// Communication is done by throwing exceptions.

@@ -39,5 +39,10 @@ namespace Shadowsocks.Model
                 proxyType = PROXY_SOCKS5;
             }
         }
+
+        public ForwardProxyConfig Clone()
+        {
+            return (ForwardProxyConfig)MemberwiseClone();
+        }
     }
 }

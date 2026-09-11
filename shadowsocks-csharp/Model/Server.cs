@@ -147,6 +147,11 @@ namespace Shadowsocks.Model
             timeout = DefaultServerTimeoutSec;
         }
 
+        public Server Clone()
+        {
+            return (Server)MemberwiseClone();
+        }
+
         private static Server ParseLegacyURL(string ssURL)
         {
             var match = UrlFinder.Match(ssURL);
