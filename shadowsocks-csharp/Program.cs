@@ -133,7 +133,7 @@ namespace Shadowsocks
                 string errMsg = e.ExceptionObject.ToString();
                 logger.Error(errMsg);
                 MessageBox.Show(
-                    $"{I18N.GetString("Unexpected error, shadowsocks will exit. Please report to")} https://github.com/shadowsocks/shadowsocks-windows/issues {Environment.NewLine}{errMsg}",
+                    $"{I18N.GetString("Unexpected error, shadowsocks will exit. Please report to")} https://github.com/pexcn/shadowsocks-windows/issues {Environment.NewLine}{errMsg}",
                     "Shadowsocks non-UI Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
@@ -146,7 +146,7 @@ namespace Shadowsocks
                 string errorMsg = $"Exception Detail: {Environment.NewLine}{e.Exception}";
                 logger.Error(errorMsg);
                 MessageBox.Show(
-                    $"{I18N.GetString("Unexpected error, shadowsocks will exit. Please report to")} https://github.com/shadowsocks/shadowsocks-windows/issues {Environment.NewLine}{errorMsg}",
+                    $"{I18N.GetString("Unexpected error, shadowsocks will exit. Please report to")} https://github.com/pexcn/shadowsocks-windows/issues {Environment.NewLine}{errorMsg}",
                     "Shadowsocks UI Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
