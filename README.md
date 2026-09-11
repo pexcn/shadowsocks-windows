@@ -26,14 +26,6 @@ Download the latest release from [release page].
 3. Configure your browser or application to use the local SOCKS5 proxy at
 127.0.0.1:1080. You can change this port in `Servers -> Edit Servers`
 
-## Server Auto Switching
-
-1. Load balance: choosing server randomly
-2. High availability: choosing the best server (low latency and packet loss)
-3. Choose By Total Package Loss: ping and choose. Please also enable
-   `Availability Statistics` in the menu if you want to use this
-4. Write your own strategy by implement IStrategy interface and send us a pull request!
-
 ## UDP
 
 For UDP, you need to use SocksCap or ProxyCap to force programs you want

@@ -108,15 +108,7 @@ namespace Shadowsocks.View
             previousIcon = icon;
             _notifyIcon.Icon = previousIcon;
 
-            string serverInfo = null;
-            if (controller.GetCurrentStrategy() != null)
-            {
-                serverInfo = controller.GetCurrentStrategy().Name;
-            }
-            else
-            {
-                serverInfo = config.GetCurrentServer().ToString();
-            }
+            string serverInfo = config.GetCurrentServer().ToString();
             // show more info by hacking the P/Invoke declaration for NOTIFYICONDATA inside Windows Forms
             // this feedback is very important because they need to know Shadowsocks is running
             string text = I18N.GetString("Shadowsocks") + " " + UpdateChecker.Version + "\n" +
@@ -480,19 +472,6 @@ namespace Shadowsocks.View
             {
                 items.RemoveAt(0);
             }
-            int strategyCount = 0;
-            foreach (var strategy in controller.GetStrategies())
-            {
-                MenuItem item = new MenuItem(strategy.Name);
-                item.Tag = strategy.ID;
-                item.Click += AStrategyItem_Click;
-                items.Add(strategyCount, item);
-                strategyCount++;
-            }
-
-            // user wants a seperator item between strategy and servers menugroup
-            items.Add(strategyCount++, new MenuItem("-"));
-
             int maxCount = 20;
             int serverCount = 0;
             bool overflow = false;
@@ -519,13 +498,13 @@ namespace Shadowsocks.View
                         var item = new MenuItem(server.ToString());
                         item.Tag = i;
                         item.Click += AServerItem_Click;
-                        items.Add(strategyCount + serverCount, item);
+                        items.Add(serverCount, item);
                         serverCount++;
                     }
                     
                     if (overflow)
                     {
-                        items.Add(strategyCount + serverCount, new MenuItem($"... more than {maxCount} (total {configuration.configs.Count})", Config_Click));
+                        items.Add(serverCount, new MenuItem($"... more than {maxCount} (total {configuration.configs.Count})", Config_Click));
                         break;
                     }
 
@@ -538,7 +517,7 @@ namespace Shadowsocks.View
 
             foreach (MenuItem item in items)
             {
-                if (item.Tag != null && (item.Tag.ToString() == configuration.index.ToString() || item.Tag.ToString() == configuration.strategy))
+                if (item.Tag != null && item.Tag.ToString() == configuration.index.ToString())
                 {
                     item.Checked = true;
                 }
@@ -549,12 +528,6 @@ namespace Shadowsocks.View
         {
             MenuItem item = (MenuItem)sender;
             controller.SelectServerIndex((int)item.Tag);
-        }
-
-        private void AStrategyItem_Click(object sender, EventArgs e)
-        {
-            MenuItem item = (MenuItem)sender;
-            controller.SelectStrategy((string)item.Tag);
         }
 
         private void Config_Click(object sender, EventArgs e)

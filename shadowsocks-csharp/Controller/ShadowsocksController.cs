@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using NLog;
 using Shadowsocks.Controller.Service;
-using Shadowsocks.Controller.Strategy;
 using Shadowsocks.Model;
 using Shadowsocks.Util;
 using WPFLocalizeExtension.Engine;
@@ -32,7 +31,6 @@ namespace Shadowsocks.Controller
 
         private Listener _listener;
         private Configuration _config;
-        private StrategyManager _strategyManager;
         private readonly ConcurrentDictionary<Server, Sip003Plugin> _pluginsByServer;
 
         private long _inboundCounter = 0;
@@ -75,7 +73,6 @@ namespace Shadowsocks.Controller
             httpClient = new HttpClient();
             _config = Configuration.Load();
             Configuration.Process(ref _config);
-            _strategyManager = new StrategyManager(this);
             _pluginsByServer = new ConcurrentDictionary<Server, Sip003Plugin>();
             StartTrafficStatistics(61);
 
@@ -144,15 +141,11 @@ namespace Shadowsocks.Controller
 
             try
             {
-                var strategy = GetCurrentStrategy();
-                strategy?.ReloadServers();
-
                 StartPlugin();
 
                 TCPRelay tcpRelay = new TCPRelay(this, _config);
                 tcpRelay.OnInbound += UpdateInboundCounter;
                 tcpRelay.OnOutbound += UpdateOutboundCounter;
-                tcpRelay.OnFailed += (o, e) => GetCurrentStrategy()?.SetFailure(e.server);
 
                 UDPRelay udpRelay = new UDPRelay(this);
                 List<Listener.IService> services = new List<Listener.IService>
@@ -200,20 +193,6 @@ namespace Shadowsocks.Controller
         public Server GetCurrentServer() => _config.GetCurrentServer();
         public Configuration GetCurrentConfiguration() => _config;
 
-        public Server GetAServer(IStrategyCallerType type, IPEndPoint localIPEndPoint, EndPoint destEndPoint)
-        {
-            IStrategy strategy = GetCurrentStrategy();
-            if (strategy != null)
-            {
-                return strategy.GetAServer(type, localIPEndPoint, destEndPoint);
-            }
-            if (_config.index < 0)
-            {
-                _config.index = 0;
-            }
-            return GetCurrentServer();
-        }
-
         public void SaveServers(List<Server> servers, int localPort, bool portableMode)
         {
             _config.configs = servers;
@@ -225,7 +204,6 @@ namespace Shadowsocks.Controller
         public void SelectServerIndex(int index)
         {
             _config.index = index;
-            _config.strategy = null;
             SaveConfig(_config);
         }
 
@@ -347,41 +325,15 @@ namespace Shadowsocks.Controller
 
         #endregion
 
-        #region Strategy
-
-        public void SelectStrategy(string strategyID)
-        {
-            _config.index = -1;
-            _config.strategy = strategyID;
-            SaveConfig(_config);
-        }
-
-        public IList<IStrategy> GetStrategies()
-        {
-            return _strategyManager.GetStrategies();
-        }
-
-        public IStrategy GetCurrentStrategy()
-        {
-            foreach (var strategy in _strategyManager.GetStrategies())
-            {
-                if (strategy.ID == _config.strategy)
-                {
-                    return strategy;
-                }
-            }
-            return null;
-        }
+        #region Traffic counters
 
         public void UpdateInboundCounter(object sender, SSTransmitEventArgs args)
         {
-            GetCurrentStrategy()?.UpdateLastRead(args.server);
             Interlocked.Add(ref _inboundCounter, args.length);
         }
 
         public void UpdateOutboundCounter(object sender, SSTransmitEventArgs args)
         {
-            GetCurrentStrategy()?.UpdateLastWrite(args.server);
             Interlocked.Add(ref _outboundCounter, args.length);
         }
 

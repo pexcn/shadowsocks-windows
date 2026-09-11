@@ -21,8 +21,6 @@ namespace Shadowsocks.Model
 
         public List<string> onlineConfigSource;
 
-        // when strategy is set, index is ignored
-        public string strategy;
         public int index;
         public bool shareOverLan;
         public bool firstRun;
@@ -48,7 +46,6 @@ namespace Shadowsocks.Model
         public Configuration()
         {
             version = UpdateChecker.Version;
-            strategy = "";
             index = 0;
             shareOverLan = false;
             firstRun = true;
@@ -156,7 +153,7 @@ namespace Shadowsocks.Model
             if (config.configs.Count == 0)
                 config.configs.Add(GetDefaultServer());
             // Selected server
-            if (config.index == -1 && string.IsNullOrEmpty(config.strategy))
+            if (config.index < 0)
                 config.index = 0;
             if (config.index >= config.configs.Count)
                 config.index = config.configs.Count - 1;

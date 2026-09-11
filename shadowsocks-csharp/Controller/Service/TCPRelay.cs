@@ -7,7 +7,6 @@ using System.Timers;
 
 using NLog;
 
-using Shadowsocks.Controller.Strategy;
 using Shadowsocks.Encryption;
 using Shadowsocks.Encryption.AEAD;
 using Shadowsocks.Encryption.Exception;
@@ -270,8 +269,7 @@ namespace Shadowsocks.Controller
 
         public void CreateRemote()
         {
-            Server server = _controller.GetAServer(IStrategyCallerType.TCP, (IPEndPoint)_connection.RemoteEndPoint,
-                _destEndPoint);
+            Server server = _controller.GetCurrentServer();
             if (server == null || server.server == "")
             {
                 throw new ArgumentException("No server configured");

@@ -4,7 +4,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using NLog;
-using Shadowsocks.Controller.Strategy;
 using Shadowsocks.Encryption;
 using Shadowsocks.Encryption.Exception;
 using Shadowsocks.Model;
@@ -53,7 +52,7 @@ namespace Shadowsocks.Controller
             UDPHandler handler = _cache.get(remoteEndPoint);
             if (handler == null)
             {
-                handler = new UDPHandler(socket, _controller.GetAServer(IStrategyCallerType.UDP, remoteEndPoint, null/*TODO: fix this*/), remoteEndPoint);
+                handler = new UDPHandler(socket, _controller.GetCurrentServer(), remoteEndPoint);
                 handler.Receive();
                 _cache.add(remoteEndPoint, handler);
             }

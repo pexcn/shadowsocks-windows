@@ -30,8 +30,6 @@ About...,О программе…,关于...,關於...,Shadowsocks について..
 Help,Помощь,帮助,說明,ヘルプ,도움말,Aide
 Quit,Выход,退出,結束,終了,종료,Quitter
 Edit Servers,Редактирование серверов,编辑服务器,編輯伺服器,サーバーの編集,서버 수정,Éditer serveurs
-Load Balance,Балансировка нагрузки,负载均衡,負載平衡,サーバーロードバランス,로드밸런싱,Répartition de charge
-High Availability,Высокая доступность,高可用,高可用性,高可用性,고가용성,Haute disponibilité
 Show Plugin Output,События плагинов в журнале,显示插件输出,,プラグインの出力情報を表示,플러그인 출력 보이기,Afficher la sortie du plugin
 Write translation template,Создать шаблон для перевода,写入翻译模板,,翻訳テンプレートファイルを書き込む,번역 템플릿 쓰기,Écrire un modèle de traduction
 ,,,,,,
