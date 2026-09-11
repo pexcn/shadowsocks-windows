@@ -14,12 +14,11 @@ Servers,Серверы,服务器,伺服器,サーバー,서버,Serveurs
 Edit Servers...,Редактировать серверы…,编辑服务器...,編輯伺服器...,サーバーの編集...,서버 수정…,Éditer serveurs…
 Online Config...,,在线配置...,線上配置...,,,
 Start on Boot,Автозагрузка,开机启动,開機啟動,システム起動時に実行,시스템 시작 시에 시작하기,Démarrage automatique
-Forward Proxy...,Прямой прокси…,正向代理设置...,正向 Proxy 設定...,フォワードプロキシの設定...,포워드 프록시,Forward-proxy…
-Allow other Devices to connect,Общий доступ к подключению,允许其他设备连入,允許其他裝置連入,他のデバイスからの接続を許可する,다른 기기에서 연결 허용,Autoriser d'autres appareils à se connecter
+Forward Proxy...,Прямой прокси…,前置代理...,前置 Proxy...,フォワードプロキシ...,포워드 프록시…,Forward-proxy…
+Allow LAN connections,Разрешить подключения из локальной сети,允许局域网连入,允許區域網路連入,ローカルネットワークからの接続を許可,로컬 네트워크에서 연결 허용,Autoriser les connexions depuis le réseau local
 Share Server Config...,Поделиться конфигурацией сервера…,分享服务器配置...,分享伺服器設定檔...,サーバーの設定を共有...,서버 설정 공유,Partager la configuration du serveur ...
 Scan QRCode from Screen...,Сканировать QRCode с экрана…,扫描屏幕上的二维码...,掃描螢幕上的 QR 碼...,画面から QR コードをスキャン...,화면에서 QR코드 스캔,Scanner le QRCode à partir de l'écran ...
 Import URL from Clipboard...,Импорт адреса из буфера обмена…,从剪贴板导入URL...,從剪貼簿匯入 URL...,クリップボードから URL をインポート...,클립보드에서 URL 가져오기…,Importer l'URL du presse-papiers ...
-Availability Statistics,Статистика доступности,统计可用性,統計可用性,可用性の統計,가용성 통계,Statistiques de disponibilité
 Show Logs...,Показать журнал…,显示日志...,顯示記錄檔...,ログの表示...,로그 보기…,Afficher les journaux ...
 Verbose Logging,Подробный журнал,详细记录日志,詳細資訊記錄,詳細なログを記録,자세한 로깅 사용,Journalisation détaillée
 Updates...,Обновления…,更新...,更新...,アップデート...,업데이트…,Mettre à jour…
@@ -34,7 +33,6 @@ Show Plugin Output,События плагинов в журнале,显示插�
 ,,,,,,
 # Config Form,,,,,,
 ,,,,,,
-Statistics configuration,Настройки статистики,统计配置,,統計の設定,통계 설정,Configuration des statistiques
 &Add,Добавить,添加(&A),新增 (&A),新規 (&A),추가 (&A),Ajouter
 &Delete,Удалить,删除(&D),移除 (&D),削除 (&D),삭제 (&D),Supprimer
 Dupli&cate,Дублир-ть,复制(&C),複製 (&C),コピー (&C),복제 (&C),Dupliquer
@@ -53,6 +51,7 @@ Portable Mode,Переносимый режим,便携模式,便攜模式,ポー
 Restart required,Требуется перезапуск программы,需要重新启动SS,需要重新啟動SS,再起動が必要,재시작이 필요합니다,Redémarrage nécessaire
 Remarks,Примечания,备注,註解,付記,알림,Remarques
 Timeout(Sec),Таймаут(сек),超时(秒),逾時 (秒),タイムアウト (秒),시간 초과 (초),Délai d'attente(sec)
+Group,Группа,分组,群組,グループ,그룹,Groupe
 OK,ОК,确定,確定,OK,확인,OK
 Cancel,Отмена,取消,取消,キャンセル,취소,Annuler
 Apply,Применить,应用,應用,適用,적용,Appliquer
