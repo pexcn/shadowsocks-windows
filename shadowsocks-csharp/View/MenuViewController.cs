@@ -9,7 +9,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
 using System.Windows.Threading;
@@ -41,7 +40,6 @@ namespace Shadowsocks.View
         private MenuItem proxyItem;
         private MenuItem VerboseLoggingToggleItem;
         private MenuItem ShowPluginOutputToggleItem;
-        private MenuItem WriteI18NFileItem;
         private MenuItem onlineConfigItem;
 
         private ConfigForm configForm;
@@ -211,7 +209,6 @@ namespace Shadowsocks.View
                     CreateMenuItem("Show Logs...", new EventHandler(this.ShowLogItem_Click)),
                     this.VerboseLoggingToggleItem = CreateMenuItem( "Verbose Logging", new EventHandler(this.VerboseLoggingToggleItem_Click) ),
                     this.ShowPluginOutputToggleItem = CreateMenuItem("Show Plugin Output", new EventHandler(this.ShowPluginOutputToggleItem_Click)),
-                    this.WriteI18NFileItem = CreateMenuItem("Write translation template",new EventHandler(WriteI18NFileItem_Click)),
                     CreateMenuGroup("Updates...", new MenuItem[] {
                         CreateMenuItem("Check for Updates...", new EventHandler(this.checkUpdatesItem_Click)),
                         new MenuItem("-"),
@@ -626,11 +623,6 @@ namespace Shadowsocks.View
         {
             ShowPluginOutputToggleItem.Checked = !ShowPluginOutputToggleItem.Checked;
             controller.ToggleShowPluginOutput(ShowPluginOutputToggleItem.Checked);
-        }
-
-        private void WriteI18NFileItem_Click(object sender, EventArgs e)
-        {
-            File.WriteAllText(I18N.I18N_FILE, Resources.i18n_csv, Encoding.UTF8);
         }
 
         #endregion

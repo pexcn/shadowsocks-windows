@@ -5,7 +5,6 @@ using Shadowsocks.Util;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Text;
 using System.Windows.Forms;
 
 namespace Shadowsocks.Controller
@@ -13,8 +12,6 @@ namespace Shadowsocks.Controller
     public static class I18N
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
-
-        public const string I18N_FILE = "i18n.csv";
 
         private static Dictionary<string, string> _strings = new Dictionary<string, string>();
 
@@ -78,20 +75,9 @@ namespace Shadowsocks.Controller
 
         static I18N()
         {
-            string i18n;
             string locale = CultureInfo.CurrentCulture.Name;
-            if (!File.Exists(I18N_FILE))
-            {
-                i18n = Resources.i18n_csv;
-                //File.WriteAllText(I18N_FILE, i18n, Encoding.UTF8);
-            }
-            else
-            {
-                logger.Info("Using external translation");
-                i18n = File.ReadAllText(I18N_FILE, Encoding.UTF8);
-            }
             logger.Info("Current language is: " + locale);
-            Init(i18n, locale);
+            Init(Resources.i18n_csv, locale);
         }
 
         public static string GetString(string key, params object[] args)
