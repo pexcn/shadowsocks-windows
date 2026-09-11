@@ -110,6 +110,8 @@ namespace Shadowsocks.ViewModels
                 proxyServer = Address,
                 proxyPort = Port,
                 proxyTimeout = Timeout,
+                // AuthRule guarantees username and password are either both set or both empty.
+                useAuth = !string.IsNullOrWhiteSpace(Username),
                 authUser = Username,
                 authPwd = Password
             };
