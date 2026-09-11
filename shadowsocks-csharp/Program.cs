@@ -1,14 +1,12 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Pipes;
 using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using CommandLine;
 using Microsoft.Win32;
 using NLog;
 using ReactiveUI;
@@ -26,7 +24,6 @@ namespace Shadowsocks
 
         public static ShadowsocksController MainController { get; private set; }
         public static MenuViewController MenuController { get; private set; }
-        public static CommandLineOption Options { get; private set; }
         public static string[] Args { get; private set; }
 
         // https://github.com/dotnet/runtime/issues/13051#issuecomment-510267727
@@ -42,28 +39,18 @@ namespace Shadowsocks
         [STAThread]
         private static void Main(string[] args)
         {
-            #region Single Instance and IPC
+            #region Single Instance
             bool hasAnotherInstance = !mutex.WaitOne(TimeSpan.Zero, true);
 
             // store args for further use
             Args = args;
-            Parser.Default.ParseArguments<CommandLineOption>(args)
-                .WithParsed(opt => Options = opt)
-                .WithNotParsed(e => e.Output());
 
             if (hasAnotherInstance)
             {
-                if (!string.IsNullOrWhiteSpace(Options.OpenUrl))
-                {
-                    IPCService.RequestOpenUrl(Options.OpenUrl);
-                }
-                else
-                {
-                    MessageBox.Show(I18N.GetString("Find Shadowsocks icon in your notify tray.")
-                                    + Environment.NewLine
-                                    + I18N.GetString("If you want to start multiple Shadowsocks, make a copy in another directory."),
-                        I18N.GetString("Shadowsocks is already running."));
-                }
+                MessageBox.Show(I18N.GetString("Find Shadowsocks icon in your notify tray.")
+                                + Environment.NewLine
+                                + I18N.GetString("If you want to start multiple Shadowsocks, make a copy in another directory."),
+                    I18N.GetString("Shadowsocks is already running."));
                 return;
             }
             #endregion
@@ -134,17 +121,6 @@ namespace Shadowsocks
                 await MainController.UpdateAllOnlineConfig();
             });
 
-#region IPC Handler and Arguement Process
-            IPCService ipcService = new IPCService();
-            Task.Run(() => ipcService.RunServer());
-            ipcService.OpenUrlRequested += (_1, e) => MainController.AskAddServerBySSURL(e.Url);
-
-            if (!string.IsNullOrWhiteSpace(Options.OpenUrl))
-            {
-                MainController.AskAddServerBySSURL(Options.OpenUrl);
-            }
-#endregion
-            
             Application.Run();
 
         }

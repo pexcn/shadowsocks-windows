@@ -63,7 +63,6 @@
     <PackageReference Include="Caseless.Fody" Version="1.9.1">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <!-- Costura had to leave 4.x to survive being hosted by the dotnet CLI: it
          imported its injected IL from whatever runtime the weaver ran on, which
          under .NET 10 meant System.Private.CoreLib references in a .NET

@@ -32,7 +32,6 @@ namespace Shadowsocks.View
 
         private ContextMenu contextMenu1;
         private MenuItem AutoStartupItem;
-        private MenuItem ProtocolHandlerItem;
         private MenuItem ShareOverLANItem;
         private MenuItem SeperatorItem;
         private MenuItem ConfigItem;
@@ -214,7 +213,6 @@ namespace Shadowsocks.View
                 this.onlineConfigItem = CreateMenuItem("Online Config...", new EventHandler(this.OnlineConfig_Click)),
                 new MenuItem("-"),
                 this.AutoStartupItem = CreateMenuItem("Start on Boot", new EventHandler(this.AutoStartupItem_Click)),
-                this.ProtocolHandlerItem = CreateMenuItem("Associate ss:// Links", new EventHandler(this.ProtocolHandlerItem_Click)),
                 this.ShareOverLANItem = CreateMenuItem("Allow other Devices to connect", new EventHandler(this.ShareOverLANItem_Click)),
                 new MenuItem("-"),
                 CreateMenuGroup("Help", new MenuItem[] {
@@ -282,7 +280,6 @@ namespace Shadowsocks.View
             VerboseLoggingToggleItem.Checked = config.isVerboseLogging;
             ShowPluginOutputToggleItem.Checked = config.showPluginOutput;
             AutoStartupItem.Checked = AutoStartup.Check();
-            ProtocolHandlerItem.Checked = ProtocolHandler.Check();
             UpdateUpdateMenu();
         }
 
@@ -459,16 +456,6 @@ namespace Shadowsocks.View
         {
             AutoStartupItem.Checked = !AutoStartupItem.Checked;
             if (!AutoStartup.Set(AutoStartupItem.Checked))
-            {
-                MessageBox.Show(I18N.GetString("Failed to update registry"));
-            }
-            LoadCurrentConfiguration();
-        }
-
-        private void ProtocolHandlerItem_Click(object sender, EventArgs e)
-        {
-            ProtocolHandlerItem.Checked = !ProtocolHandlerItem.Checked;
-            if (!ProtocolHandler.Set(ProtocolHandlerItem.Checked))
             {
                 MessageBox.Show(I18N.GetString("Failed to update registry"));
             }
