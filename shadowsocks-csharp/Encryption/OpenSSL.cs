@@ -102,10 +102,6 @@ namespace Shadowsocks.Encryption
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int EVP_CIPHER_CTX_reset(IntPtr ctx);
-
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
         public static extern int EVP_CipherInit_ex(IntPtr ctx, IntPtr type,
             IntPtr impl, byte[] key, byte[] iv, int enc);
 

@@ -10,9 +10,8 @@ namespace Shadowsocks.Encryption
 {
     /// <summary>
     /// Unpacks the bundled native crypto library and pulls it into the process.
-    /// MbedTLS, OpenSSL and Sodium are all re-exports out of this single DLL, so
-    /// the three of them share one unpack-and-load, guarded against the race the
-    /// three separate static constructors used to have over the same temp file.
+    /// All native crypto entry points are exported from this single DLL, so they
+    /// share one unpack-and-load, guarded against races over the same temp file.
     /// </summary>
     internal static class LibSsCrypto
     {

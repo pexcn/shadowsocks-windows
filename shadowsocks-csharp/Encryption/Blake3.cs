@@ -21,7 +21,7 @@ namespace Shadowsocks.Encryption
 
         // blake3_hasher is caller-allocated, and upstream calls its layout a
         // private detail it is free to grow, so ask rather than hardcode
-        // today's 1912 bytes. Same arrangement as mbedTLS's cipher contexts.
+        // today's 1912 bytes. The caller allocates the native context buffer.
         private static readonly int HasherSize;
 
         static Blake3()

@@ -107,13 +107,13 @@ namespace Shadowsocks.Encryption.AEAD
             {
                 if (i == 0)
                 {
-                    md5sum = MbedTLS.MD5(password);
+                    md5sum = LibSsCryptoHash.MD5(password);
                 }
                 else
                 {
                     Array.Copy(md5sum, 0, result, 0, MD5_LEN);
                     Array.Copy(password, 0, result, MD5_LEN, password.Length);
-                    md5sum = MbedTLS.MD5(result);
+                    md5sum = LibSsCryptoHash.MD5(result);
                 }
                 Array.Copy(md5sum, 0, key, i, Math.Min(MD5_LEN, keylen - i));
                 i += MD5_LEN;
@@ -122,7 +122,7 @@ namespace Shadowsocks.Encryption.AEAD
 
         public void DeriveSessionKey(byte[] salt, byte[] masterKey, byte[] sessionKey)
         {
-            int ret = MbedTLS.hkdf(salt, saltLen, masterKey, keyLen, InfoBytes, InfoBytes.Length, sessionKey,
+            int ret = LibSsCryptoHash.hkdf(salt, saltLen, masterKey, keyLen, InfoBytes, InfoBytes.Length, sessionKey,
                 keyLen);
             if (ret != 0) throw new System.Exception("failed to generate session key");
         }
