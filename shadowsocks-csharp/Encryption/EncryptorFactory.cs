@@ -19,12 +19,6 @@ namespace Shadowsocks.Encryption
             var AEADSodiumEncryptorSupportedCiphers = AEADSodiumEncryptor.SupportedCiphers();
             var PlainEncryptorSupportedCiphers = PlainEncryptor.SupportedCiphers();
 
-            if (!Sodium.AES256GCMAvailable)
-            {
-                // libsodium refuses aes-256-gcm without AES-NI
-                AEADSodiumEncryptorSupportedCiphers.Remove("aes-256-gcm");
-            }
-
             // SIP022 methods get their own encryptor. Their names do not collide
             // with the AEAD-2018 ones, so the order here is not load bearing.
             foreach (string method in AEAD2022Encryptor.SupportedCiphers())

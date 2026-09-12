@@ -14,7 +14,6 @@ namespace Shadowsocks.Encryption.AEAD
 
         private const int CIPHER_CHACHA20IETFPOLY1305 = 1;
         private const int CIPHER_XCHACHA20IETFPOLY1305 = 2;
-        private const int CIPHER_AES256GCM = 3;
 
         private byte[] _sodiumEncSubkey;
         private byte[] _sodiumDecSubkey;
@@ -30,7 +29,6 @@ namespace Shadowsocks.Encryption.AEAD
         {
             {"chacha20-ietf-poly1305", new EncryptorInfo(32, 32, 12, 16, CIPHER_CHACHA20IETFPOLY1305)},
             {"xchacha20-ietf-poly1305", new EncryptorInfo(32, 32, 24, 16, CIPHER_XCHACHA20IETFPOLY1305)},
-            {"aes-256-gcm", new EncryptorInfo(32, 32, 12, 16, CIPHER_AES256GCM)},
         };
 
         public static List<string> SupportedCiphers()
@@ -77,13 +75,6 @@ namespace Shadowsocks.Encryption.AEAD
                         null, _encNonce,
                         _sodiumEncSubkey);
                     break;
-                case CIPHER_AES256GCM:
-                    ret = Sodium.crypto_aead_aes256gcm_encrypt(ciphertext, ref encClen,
-                        plaintext, (ulong)plen,
-                        null, 0,
-                        null, _encNonce,
-                        _sodiumEncSubkey);
-                    break;
                 default:
                     throw new System.Exception("not implemented");
             }
@@ -113,13 +104,6 @@ namespace Shadowsocks.Encryption.AEAD
                     break;
                 case CIPHER_XCHACHA20IETFPOLY1305:
                     ret = Sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(plaintext, ref decPlen,
-                        null,
-                        ciphertext, (ulong)clen,
-                        null, 0,
-                        _decNonce, _sodiumDecSubkey);
-                    break;
-                case CIPHER_AES256GCM:
-                    ret = Sodium.crypto_aead_aes256gcm_decrypt(plaintext, ref decPlen,
                         null,
                         ciphertext, (ulong)clen,
                         null, 0,
