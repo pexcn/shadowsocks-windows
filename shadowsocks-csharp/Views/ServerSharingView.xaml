@@ -8,10 +8,7 @@
     xmlns:local="clr-namespace:Shadowsocks.Views"
     xmlns:vms="clr-namespace:Shadowsocks.ViewModels"
     xmlns:reactiveui="http://reactiveui.net"
-    xmlns:lex="http://wpflocalizeextension.codeplex.com"
-    lex:LocalizeDictionary.DesignCulture="en"
-    lex:ResxLocalizationProvider.DefaultAssembly="Shadowsocks.Localization"
-    lex:ResxLocalizationProvider.DefaultDictionary="Strings"
+    xmlns:lex="clr-namespace:Shadowsocks.Localization"
     mc:Ignorable="d"
     d:DesignHeight="400" d:DesignWidth="660">
     <Grid Margin="8">

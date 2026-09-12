@@ -31,6 +31,40 @@ Quit,Выход,退出,結束,終了,종료,Quitter
 Edit Servers,Редактирование серверов,编辑服务器,編輯伺服器,サーバーの編集,서버 수정,Éditer serveurs
 Show Plugin Output,События плагинов в журнале,显示插件输出,,プラグインの出力情報を表示,플러그인 출력 보이기,Afficher la sortie du plugin
 ,,,,,,
+# WPF localization keys,,,,,,
+@Type|Type,тип,类型,類型,タイプ,유형,Type
+@NoProxy|No proxy,,不使用代理,,,,
+@SOCKS5|SOCKS5,,,,,,
+@HTTP|HTTP,,,,,,
+@Details|Details,,详细设置,,,,
+@Address|Address,адрес,地址,位址,アドレス,주소,adresse
+@Port|Port,порт,端口,Port,ポート,포트,Port
+@Timeout|Timeout (sec),Таймаут (сек),超时 (秒),逾時 (秒),タイムアウト (秒),시간 초과 (초),Délai d'attente (sec)
+@CredentialsOptional|Credentials (optional),,认证 (可选),,,,
+@Username|Username,,用户名,,,,
+@Password|Password,Пароль,密码,密碼,パスワード,비밀번호,Mot de passe
+@saveButton_Content|_Save,,保存,,,,
+@cancelButton_Content|_Cancel,Отмена,取消,取消,キャンセル,취소,Annuler
+@okButton_Content|_OK,ОК,确定,確定,OK,확인,OK
+@registerAllButton_Content|_Register all,Применять при запуске программы,全部注册,啟動時註冊快速鍵,起動時にホットキーを登録する,시스템 시작 시 단축키 등록,Enregistrer tout au démarrage
+@updateButton_Content|_Update,Обновить,更新,更新,更新,새롭게 함,mise à jour
+@updateAllButton_Content|Update all,,全部更新,全部更新,,,
+@copyLinkButton_Content|_Copy link,копировать ссылку,复制链接,複製鏈接,リンクをコピーする,링크 복사,Copier le lien
+@removeButton_Content|Remove,Удалить,移除,,,,retirer
+@addButton_Content|_Add,Добавить,添加,新增,新規,추가,Ajouter
+@updatePromptTitle|An update is available.,,发现可用更新,發現可用更新,,,
+@updatePromptBody|Please read the release notes carefully. Then decide whether to update.,,请仔细阅读发布信息，然后决定是否更新。,,,,
+@skipVersionButton_Content|_Skip version,пропустить версию,跳过版本,跳過版本,バージョンをスキップ,버전 건너 뛰기,sauter la version
+@notNowButton_Content|_Not now,,暂不更新,暫不更新,,,
+@Copy|_Copy,копировать,复制,複製,コピー,부,copie
+@ForwardProxy|Forward Proxy,,前置代理,,,,
+@ServerSharing|Server Sharing,,服务器分享,,,,
+@OnlineConfigDelivery|Online Configuration Delivery,,在线配置下发,,,,
+@VersionUpdate|VersionUpdate,,版本更新,,,,
+@sip008UpdateSuccess|Successfully updated the selected source!,,成功更新选定来源！,,,,
+@sip008UpdateFailure|Update failed. See the logs for more information.,,更新失败，请查看日志获取更多信息。,,,,
+@sip008UpdateAllSuccess|Successfully updated all sources!,,成功更新所有来源！,,,,
+"@sip008UpdateAllFailure|The following sources failed to update:\n\n",,"下列来源更新失败:\n\n",,,,
 # Config Form,,,,,,
 ,,,,,,
 &Add,Добавить,添加(&A),新增 (&A),新規 (&A),추가 (&A),Ajouter

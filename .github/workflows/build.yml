@@ -25,9 +25,9 @@ jobs:
       - name: Test
         run: dotnet test test/ShadowsocksTest.csproj -c Release
 
-      # Costura.Fody merges every dependency into Shadowsocks.exe, the localized
-      # strings among them, so the app ships as that one file. Everything else
-      # dotnet publish emits is already inside the exe.
+      # Costura.Fody merges every dependency into Shadowsocks.exe, so the app
+      # ships as that one file. Everything else dotnet publish emits is already
+      # inside the exe.
       - name: Publish
         shell: pwsh
         run: |

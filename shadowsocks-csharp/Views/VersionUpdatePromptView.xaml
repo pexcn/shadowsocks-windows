@@ -9,10 +9,7 @@
     xmlns:vms="clr-namespace:Shadowsocks.ViewModels"
     xmlns:reactiveui="http://reactiveui.net"
     xmlns:mdxam="clr-namespace:MdXaml;assembly=MdXaml"
-    xmlns:lex="http://wpflocalizeextension.codeplex.com"
-    lex:LocalizeDictionary.DesignCulture="en"
-    lex:ResxLocalizationProvider.DefaultAssembly="Shadowsocks.Localization"
-    lex:ResxLocalizationProvider.DefaultDictionary="Strings"
+    xmlns:lex="clr-namespace:Shadowsocks.Localization"
     mc:Ignorable="d" 
     d:DesignHeight="480" d:DesignWidth="640">
     <Grid Margin="8">
@@ -33,11 +30,11 @@
                                     Markdown="{Binding ReleaseNotes}"
                                     MarkdownStyle="{x:Static mdxam:MarkdownStyle.GithubLike}"/>
         <StackPanel Orientation="Horizontal" Grid.Row="3">
-            <Button x:Name="updateButton" Margin="8 8 4 4" Width="75" Height="23" Content="{lex:Loc}"/>
+            <Button x:Name="updateButton" Margin="8 8 4 4" Width="75" Height="23" Content="{lex:Loc updateButton_Content}"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal" Grid.Row="3" HorizontalAlignment="Right">
-            <Button x:Name="skipVersionButton" Margin="4 8 4 4" Width="75" Height="23" Content="{lex:Loc}"/>
-            <Button x:Name="notNowButton" Margin="4 8 8 4" Width="75" Height="23" Content="{lex:Loc}"/>
+            <Button x:Name="skipVersionButton" Margin="4 8 4 4" Width="75" Height="23" Content="{lex:Loc skipVersionButton_Content}"/>
+            <Button x:Name="notNowButton" Margin="4 8 8 4" Width="75" Height="23" Content="{lex:Loc notNowButton_Content}"/>
         </StackPanel>
     </Grid>
 </reactiveui:ReactiveUserControl>

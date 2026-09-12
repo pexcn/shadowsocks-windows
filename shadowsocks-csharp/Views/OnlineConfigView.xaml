@@ -8,10 +8,7 @@
     xmlns:local="clr-namespace:Shadowsocks.Views"
     xmlns:vms="clr-namespace:Shadowsocks.ViewModels"
     xmlns:reactiveui="http://reactiveui.net"
-    xmlns:lex="http://wpflocalizeextension.codeplex.com"
-    lex:LocalizeDictionary.DesignCulture="en"
-    lex:ResxLocalizationProvider.DefaultAssembly="Shadowsocks.Localization"
-    lex:ResxLocalizationProvider.DefaultDictionary="Strings"
+    xmlns:lex="clr-namespace:Shadowsocks.Localization"
     mc:Ignorable="d" 
     d:DesignHeight="500" d:DesignWidth="480">
     <Grid Margin="8">
@@ -37,13 +34,13 @@
         </ListBox>
         <StackPanel Grid.Row="0" Grid.Column="2">
             <Button x:Name="updateButton" Margin="4 8 8 4"
-                    MinWidth="75" Content="{lex:Loc}"/>
+                    MinWidth="75" Content="{lex:Loc updateButton_Content}"/>
             <Button x:Name="updateAllButton" Margin="4 4 8 4"
-                    MinWidth="75" Content="{lex:Loc}"/>
+                    MinWidth="75" Content="{lex:Loc updateAllButton_Content}"/>
             <Button x:Name="copyLinkButton" Margin="4 4 8 8"
-                    MinWidth="75" Content="{lex:Loc}"/>
+                    MinWidth="75" Content="{lex:Loc copyLinkButton_Content}"/>
             <Button x:Name="removeButton" Margin="4 8 8 8"
-                    MinWidth="75" Content="{lex:Loc}"/>
+                    MinWidth="75" Content="{lex:Loc removeButton_Content}"/>
         </StackPanel>
         
         <TextBlock Margin="8 4 4 8"
@@ -56,6 +53,6 @@
                 Grid.Row="1"
                 Grid.Column="2"
                 MinWidth="75"
-                Content="{lex:Loc}"/>
+                Content="{lex:Loc addButton_Content}"/>
     </Grid>
 </reactiveui:ReactiveUserControl>

@@ -100,16 +100,7 @@
     <PackageReference Include="System.Security.Cryptography.X509Certificates" Version="4.3.2" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageReference Include="System.ValueTuple" Version="4.6.2" />
-    <PackageReference Include="WPFLocalizeExtension" Version="3.10.0" />
-    <PackageReference Include="XAMLMarkupExtensions" Version="2.1.3" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- The localized strings live in their own assembly so that Costura embeds
-         the satellite assemblies: it only weaves reference copy-local files, and
-         the satellites a project generates for itself never appear in that set. -->
-    <ProjectReference Include="..\shadowsocks-localization\shadowsocks-localization.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,18 +1,36 @@
-﻿using WPFLocalizeExtension.Extensions;
+﻿using Shadowsocks.Controller;
+using System;
+using System.Windows.Markup;
 
 namespace Shadowsocks.Localization
 {
     public static class LocalizationProvider
     {
-        // Strings lives in Shadowsocks.Localization.dll, not in this assembly, so
-        // the key cannot be built from the calling assembly any more. Reading the
-        // name off the type keeps it in step with the project reference; the XAML
-        // views spell out the same name in ResxLocalizationProvider.DefaultAssembly.
-        private static readonly string StringsAssembly = typeof(Strings).Assembly.GetName().Name;
-
         public static T GetLocalizedValue<T>(string key)
         {
-            return LocExtension.GetLocalizedValue<T>(StringsAssembly + ":Strings:" + key);
+            if (typeof(T) != typeof(string))
+                throw new NotSupportedException("Only string localization values are supported.");
+
+            return (T)(object)I18N.GetString(key);
+        }
+    }
+
+    // Keep the existing {lex:Loc Key} XAML syntax while using the CSV-backed
+    // dictionary shared with the WinForms views.
+    [MarkupExtensionReturnType(typeof(string))]
+    public sealed class LocExtension : MarkupExtension
+    {
+        public LocExtension(string key)
+        {
+            Key = key;
+        }
+
+        [ConstructorArgument("key")]
+        public string Key { get; set; }
+
+        public override object ProvideValue(IServiceProvider serviceProvider)
+        {
+            return I18N.GetString(Key);
         }
     }
 }

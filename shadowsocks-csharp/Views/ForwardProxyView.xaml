@@ -8,10 +8,7 @@
     xmlns:local="clr-namespace:Shadowsocks.Views"
     xmlns:vms="clr-namespace:Shadowsocks.ViewModels"
     xmlns:reactiveui="http://reactiveui.net"
-    xmlns:lex="http://wpflocalizeextension.codeplex.com"
-    lex:LocalizeDictionary.DesignCulture="en"
-    lex:ResxLocalizationProvider.DefaultAssembly="Shadowsocks.Localization"
-    lex:ResxLocalizationProvider.DefaultDictionary="Strings"
+    xmlns:lex="clr-namespace:Shadowsocks.Localization"
     mc:Ignorable="d" 
     d:DesignHeight="380" d:DesignWidth="280">
     <Grid Margin="8">
@@ -93,8 +90,8 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom">
-            <Button x:Name="saveButton" Margin="4" MinWidth="75" Content="{lex:Loc}"/>
-            <Button x:Name="cancelButton" Margin="4" MinWidth="75" Content="{lex:Loc}"/>
+            <Button x:Name="saveButton" Margin="4" MinWidth="75" Content="{lex:Loc saveButton_Content}"/>
+            <Button x:Name="cancelButton" Margin="4" MinWidth="75" Content="{lex:Loc cancelButton_Content}"/>
         </StackPanel>
     </Grid>
 </reactiveui:ReactiveUserControl>
