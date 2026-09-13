@@ -126,27 +126,13 @@ namespace Shadowsocks.Encryption.AEAD
             lock (_encryptCtxLock)
             {
                 ThrowIfDisposed();
-                OpenSSL.SetCtxNonce(_encryptCtx, _encNonce, true);
-
-                int written;
-                if (OpenSSL.CipherUpdate(_encryptCtx, ciphertext, cipherOffset, out written,
-                        plaintext, plainOffset, plainLen) != 1)
+                int written = OpenSSL.AeadEncrypt(_encryptCtx, _encNonce,
+                    plaintext, plainOffset, plainLen, ciphertext, cipherOffset, tagLen);
+                if (written != plainLen + tagLen)
                 {
                     throw new CryptoErrorException("openssl: fail to encrypt AEAD");
                 }
-
-                int finalLen = 0;
-                if (OpenSSL.CipherFinal(_encryptCtx, ciphertext, cipherOffset + written, ref finalLen) != 1)
-                {
-                    throw new CryptoErrorException("openssl: fail to finalize AEAD");
-                }
-                if (finalLen != 0)
-                {
-                    throw new CryptoErrorException("openssl: unexpected AEAD final output");
-                }
-
-                OpenSSL.AEADGetTag(_encryptCtx, ciphertext, cipherOffset + written, tagLen);
-                return written + tagLen;
+                return written;
             }
         }
 
@@ -162,24 +148,13 @@ namespace Shadowsocks.Encryption.AEAD
             lock (_decryptCtxLock)
             {
                 ThrowIfDisposed();
-                OpenSSL.SetCtxNonce(_decryptCtx, _decNonce, false);
-                OpenSSL.AEADSetTag(_decryptCtx, ciphertext, cipherOffset + payloadLen, tagLen);
-
-                int written;
-                if (OpenSSL.CipherUpdate(_decryptCtx, plaintext, plainOffset, out written,
-                        ciphertext, cipherOffset, payloadLen) != 1)
+                int written = OpenSSL.AeadDecrypt(_decryptCtx, _decNonce,
+                    ciphertext, cipherOffset, cipherLen, plaintext, plainOffset, tagLen);
+                if (written < 0)
                 {
-                    throw new CryptoErrorException("openssl: fail to decrypt AEAD");
-                }
-
-                int finalLen = 0;
-                if (OpenSSL.CipherFinal(_decryptCtx, plaintext, plainOffset + written, ref finalLen) <= 0)
-                {
-                    throw new CryptoErrorException("openssl: authentication failed");
-                }
-                if (finalLen != 0)
-                {
-                    throw new CryptoErrorException("openssl: unexpected AEAD final output");
+                    throw new CryptoErrorException(written == -2
+                        ? "openssl: authentication failed"
+                        : "openssl: fail to decrypt AEAD");
                 }
                 return written;
             }
