@@ -38,7 +38,7 @@ jobs:
             if ($describe) { $describe -replace '^v', '' } else { '0.0.0-0-g' + (git rev-parse --short HEAD) }
           }
           Write-Host "Version: $version"
-          dotnet publish shadowsocks-csharp/shadowsocks-csharp.csproj -c Release -o out -p:Version=$version
+          dotnet publish shadowsocks-windows/shadowsocks-windows.csproj -c Release -o out -p:Version=$version
           New-Item -ItemType Directory publish | Out-Null
           Copy-Item out/Shadowsocks.exe publish
 
