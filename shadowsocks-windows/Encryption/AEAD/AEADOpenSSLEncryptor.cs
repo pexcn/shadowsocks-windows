@@ -7,22 +7,26 @@ namespace Shadowsocks.Encryption.AEAD
     public class AEADOpenSSLEncryptor
         : AEADEncryptor, IDisposable
     {
-        const int CIPHER_AES = 1;
-        const int CIPHER_CHACHA20IETFPOLY1305 = 2;
+        private const int CIPHER_AES = 1;
+        private const int CIPHER_CHACHA20IETFPOLY1305 = 2;
 
-        private byte[] _opensslEncSubkey;
-        private byte[] _opensslDecSubkey;
+        private readonly byte[] _opensslEncSubkey;
+        private readonly byte[] _opensslDecSubkey;
+        private readonly IntPtr _cipherInfoPtr;
 
         private IntPtr _encryptCtx = IntPtr.Zero;
         private IntPtr _decryptCtx = IntPtr.Zero;
-
-        private IntPtr _cipherInfoPtr = IntPtr.Zero;
 
         public AEADOpenSSLEncryptor(string method, string password)
             : base(method, password)
         {
             _opensslEncSubkey = new byte[keyLen];
             _opensslDecSubkey = new byte[keyLen];
+            _cipherInfoPtr = OpenSSL.GetCipherInfo(_innerLibName);
+            if (_cipherInfoPtr == IntPtr.Zero)
+            {
+                throw new System.Exception("openssl: cipher not found");
+            }
         }
 
         private static readonly Dictionary<string, EncryptorInfo> _ciphers = new Dictionary<string, EncryptorInfo>
@@ -45,36 +49,43 @@ namespace Shadowsocks.Encryption.AEAD
 
         public override void InitCipher(byte[] salt, bool isEncrypt, bool isUdp)
         {
-            lock (_ctxLock)
+            object ctxLock = isEncrypt ? _encryptCtxLock : _decryptCtxLock;
+            lock (ctxLock)
             {
                 ThrowIfDisposed();
-
                 base.InitCipher(salt, isEncrypt, isUdp);
-                _cipherInfoPtr = OpenSSL.GetCipherInfo(_innerLibName);
-                if (_cipherInfoPtr == IntPtr.Zero) throw new System.Exception("openssl: cipher not found");
-                IntPtr ctx = OpenSSL.EVP_CIPHER_CTX_new();
-                if (ctx == IntPtr.Zero) throw new System.Exception("openssl: fail to create ctx");
 
-                // UDP re-inits per packet, and the encryptor is now held for the
-                // life of a UDP handler rather than rebuilt each time, so the
-                // context this replaces has to be freed here. It used to be
-                // unreachable-but-alive, which the finalizer could never collect.
-                if (isEncrypt)
+                byte[] subkey = isEncrypt ? _opensslEncSubkey : _opensslDecSubkey;
+                DeriveSessionKey(isEncrypt ? _encryptSalt : _decryptSalt, _masterKey, subkey);
+
+                IntPtr ctx = EnsureContext(isEncrypt);
+                int direction = isEncrypt ? OpenSSL.OPENSSL_ENCRYPT : OpenSSL.OPENSSL_DECRYPT;
+                int ret = OpenSSL.EVP_CipherInit_ex(ctx, IntPtr.Zero, IntPtr.Zero, subkey, null, direction);
+                if (ret != 1)
                 {
-                    if (_encryptCtx != IntPtr.Zero) OpenSSL.EVP_CIPHER_CTX_free(_encryptCtx);
-                    _encryptCtx = ctx;
+                    throw new System.Exception("openssl: cannot set key");
                 }
-                else
-                {
-                    if (_decryptCtx != IntPtr.Zero) OpenSSL.EVP_CIPHER_CTX_free(_decryptCtx);
-                    _decryptCtx = ctx;
-                }
+            }
+        }
 
-                DeriveSessionKey(isEncrypt ? _encryptSalt : _decryptSalt, _Masterkey,
-                    isEncrypt ? _opensslEncSubkey : _opensslDecSubkey);
+        private IntPtr EnsureContext(bool isEncrypt)
+        {
+            IntPtr ctx = isEncrypt ? _encryptCtx : _decryptCtx;
+            if (ctx != IntPtr.Zero)
+            {
+                return ctx;
+            }
 
-                var ret = OpenSSL.EVP_CipherInit_ex(ctx, _cipherInfoPtr, IntPtr.Zero, null, null,
-                    isEncrypt ? OpenSSL.OPENSSL_ENCRYPT : OpenSSL.OPENSSL_DECRYPT);
+            ctx = OpenSSL.EVP_CIPHER_CTX_new();
+            if (ctx == IntPtr.Zero)
+            {
+                throw new System.Exception("openssl: fail to create ctx");
+            }
+
+            int direction = isEncrypt ? OpenSSL.OPENSSL_ENCRYPT : OpenSSL.OPENSSL_DECRYPT;
+            try
+            {
+                int ret = OpenSSL.EVP_CipherInit_ex(ctx, _cipherInfoPtr, IntPtr.Zero, null, null, direction);
                 if (ret != 1) throw new System.Exception("openssl: fail to init ctx");
 
                 ret = OpenSSL.EVP_CIPHER_CTX_set_key_length(ctx, keyLen);
@@ -84,96 +95,101 @@ namespace Shadowsocks.Encryption.AEAD
                     nonceLen, IntPtr.Zero);
                 if (ret != 1) throw new System.Exception("openssl: fail to set AEAD nonce length");
 
-                ret = OpenSSL.EVP_CipherInit_ex(ctx, IntPtr.Zero, IntPtr.Zero,
-                    isEncrypt ? _opensslEncSubkey : _opensslDecSubkey,
-                    null,
-                    isEncrypt ? OpenSSL.OPENSSL_ENCRYPT : OpenSSL.OPENSSL_DECRYPT);
-                if (ret != 1) throw new System.Exception("openssl: cannot set key");
-                OpenSSL.EVP_CIPHER_CTX_set_padding(ctx, 0);
+                ret = OpenSSL.EVP_CIPHER_CTX_set_padding(ctx, 0);
+                if (ret != 1) throw new System.Exception("openssl: cannot disable padding");
             }
+            catch
+            {
+                OpenSSL.EVP_CIPHER_CTX_free(ctx);
+                throw;
+            }
+
+            if (isEncrypt)
+            {
+                _encryptCtx = ctx;
+            }
+            else
+            {
+                _decryptCtx = ctx;
+            }
+            return ctx;
         }
 
-        public override void cipherEncrypt(byte[] plaintext, uint plen, byte[] ciphertext, ref uint clen)
+        protected override int CipherEncrypt(byte[] plaintext, int plainOffset, int plainLen,
+            byte[] ciphertext, int cipherOffset)
         {
-            lock (_ctxLock)
+            if (plainOffset < 0 || plainLen < 0 || plainOffset > plaintext.Length - plainLen)
+                throw new ArgumentOutOfRangeException(nameof(plainOffset));
+            if (cipherOffset < 0 || cipherOffset > ciphertext.Length - plainLen - tagLen)
+                throw new ArgumentOutOfRangeException(nameof(cipherOffset));
+
+            lock (_encryptCtxLock)
             {
                 ThrowIfDisposed();
-
                 OpenSSL.SetCtxNonce(_encryptCtx, _encNonce, true);
-                // buf: all plaintext
-                // outbuf: ciphertext + tag
-                int ret;
-                int tmpLen = 0;
-                clen = 0;
-                var tagBuf = new byte[tagLen];
 
-                ret = OpenSSL.EVP_CipherUpdate(_encryptCtx, ciphertext, out tmpLen,
-                    plaintext, (int) plen);
-                if (ret != 1) throw new CryptoErrorException("openssl: fail to encrypt AEAD");
-                clen += (uint) tmpLen;
-                // For AEAD cipher, it should not output anything
-                ret = OpenSSL.EVP_CipherFinal_ex(_encryptCtx, ciphertext, ref tmpLen);
-                if (ret != 1) throw new CryptoErrorException("openssl: fail to finalize AEAD");
-                if (tmpLen > 0)
+                int written;
+                if (OpenSSL.CipherUpdate(_encryptCtx, ciphertext, cipherOffset, out written,
+                        plaintext, plainOffset, plainLen) != 1)
                 {
-                    throw new System.Exception("openssl: fail to finish AEAD");
+                    throw new CryptoErrorException("openssl: fail to encrypt AEAD");
                 }
 
-                OpenSSL.AEADGetTag(_encryptCtx, tagBuf, tagLen);
-                Array.Copy(tagBuf, 0, ciphertext, clen, tagLen);
-                clen += (uint) tagLen;
+                int finalLen = 0;
+                if (OpenSSL.CipherFinal(_encryptCtx, ciphertext, cipherOffset + written, ref finalLen) != 1)
+                {
+                    throw new CryptoErrorException("openssl: fail to finalize AEAD");
+                }
+                if (finalLen != 0)
+                {
+                    throw new CryptoErrorException("openssl: unexpected AEAD final output");
+                }
+
+                OpenSSL.AEADGetTag(_encryptCtx, ciphertext, cipherOffset + written, tagLen);
+                return written + tagLen;
             }
         }
 
-        public override void cipherDecrypt(byte[] ciphertext, uint clen, byte[] plaintext, ref uint plen)
+        protected override int CipherDecrypt(byte[] ciphertext, int cipherOffset, int cipherLen,
+            byte[] plaintext, int plainOffset)
         {
-            lock (_ctxLock)
+            int payloadLen = cipherLen - tagLen;
+            if (cipherLen < tagLen || cipherOffset < 0 || cipherOffset > ciphertext.Length - cipherLen)
+                throw new ArgumentOutOfRangeException(nameof(cipherOffset));
+            if (plainOffset < 0 || plainOffset > plaintext.Length - payloadLen)
+                throw new ArgumentOutOfRangeException(nameof(plainOffset));
+
+            lock (_decryptCtxLock)
             {
                 ThrowIfDisposed();
-
                 OpenSSL.SetCtxNonce(_decryptCtx, _decNonce, false);
-                // buf: ciphertext + tag
-                // outbuf: plaintext
-                int ret;
-                int tmpLen = 0;
-                plen = 0;
+                OpenSSL.AEADSetTag(_decryptCtx, ciphertext, cipherOffset + payloadLen, tagLen);
 
-                // split tag
-                byte[] tagbuf = new byte[tagLen];
-                Array.Copy(ciphertext, (int) (clen - tagLen), tagbuf, 0, tagLen);
-                OpenSSL.AEADSetTag(_decryptCtx, tagbuf, tagLen);
-
-                ret = OpenSSL.EVP_CipherUpdate(_decryptCtx,
-                    plaintext, out tmpLen, ciphertext, (int) (clen - tagLen));
-                if (ret != 1) throw new CryptoErrorException("openssl: fail to decrypt AEAD");
-                plen += (uint) tmpLen;
-
-                // For AEAD cipher, it should not output anything
-                ret = OpenSSL.EVP_CipherFinal_ex(_decryptCtx, plaintext, ref tmpLen);
-                if (ret <= 0)
+                int written;
+                if (OpenSSL.CipherUpdate(_decryptCtx, plaintext, plainOffset, out written,
+                        ciphertext, cipherOffset, payloadLen) != 1)
                 {
-                    // If this is not successful authenticated
-                    throw new CryptoErrorException(String.Format("ret is {0}", ret));
+                    throw new CryptoErrorException("openssl: fail to decrypt AEAD");
                 }
 
-                if (tmpLen > 0)
+                int finalLen = 0;
+                if (OpenSSL.CipherFinal(_decryptCtx, plaintext, plainOffset + written, ref finalLen) <= 0)
                 {
-                    throw new System.Exception("openssl: fail to finish AEAD");
+                    throw new CryptoErrorException("openssl: authentication failed");
                 }
+                if (finalLen != 0)
+                {
+                    throw new CryptoErrorException("openssl: unexpected AEAD final output");
+                }
+                return written;
             }
         }
 
         #region IDisposable
 
         private bool _disposed;
-
-        // A native context outlives the call that created it, and a UDP handler
-        // shares one encryptor between the thread that sends and the IOCP thread
-        // that receives -- so an eviction can free an EVP_CIPHER_CTX while
-        // OpenSSL is still reading it. Everything that creates, uses or frees a
-        // context runs under this lock, which is the protection
-        // AEAD2022Encryptor already gets from its own _udpLock.
-        private readonly object _ctxLock = new object();
+        private readonly object _encryptCtxLock = new object();
+        private readonly object _decryptCtxLock = new object();
 
         private void ThrowIfDisposed()
         {
@@ -196,30 +212,26 @@ namespace Shadowsocks.Encryption.AEAD
 
         protected virtual void Dispose(bool disposing)
         {
-            // The whole body is under the lock, not just the flag: freeing a
-            // context that a concurrent cipherEncrypt/cipherDecrypt is still
-            // passing to OpenSSL is a use-after-free in native memory.
-            lock (_ctxLock)
+            // Operations take only their direction's lock so upload and download
+            // can run concurrently. Disposal takes both in a fixed order before
+            // freeing either native context.
+            lock (_encryptCtxLock)
             {
-                if (_disposed) return;
-                _disposed = true;
-
-                if (disposing)
+                lock (_decryptCtxLock)
                 {
-                    // free managed objects
-                }
+                    if (_disposed) return;
+                    _disposed = true;
 
-                // free unmanaged objects
-                if (_encryptCtx != IntPtr.Zero)
-                {
-                    OpenSSL.EVP_CIPHER_CTX_free(_encryptCtx);
-                    _encryptCtx = IntPtr.Zero;
-                }
-
-                if (_decryptCtx != IntPtr.Zero)
-                {
-                    OpenSSL.EVP_CIPHER_CTX_free(_decryptCtx);
-                    _decryptCtx = IntPtr.Zero;
+                    if (_encryptCtx != IntPtr.Zero)
+                    {
+                        OpenSSL.EVP_CIPHER_CTX_free(_encryptCtx);
+                        _encryptCtx = IntPtr.Zero;
+                    }
+                    if (_decryptCtx != IntPtr.Zero)
+                    {
+                        OpenSSL.EVP_CIPHER_CTX_free(_decryptCtx);
+                        _decryptCtx = IntPtr.Zero;
+                    }
                 }
             }
         }

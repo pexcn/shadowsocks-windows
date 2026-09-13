@@ -27,6 +27,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Platforms>AnyCPU;x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Keep the pre-migration bin\<Platform>\<Configuration> layout. -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>bin\x64\$(Configuration)\</OutputPath>

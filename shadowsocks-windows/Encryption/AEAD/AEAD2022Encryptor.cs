@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using NLog;
@@ -100,12 +101,13 @@ namespace Shadowsocks.Encryption.AEAD
         // Salt length equals key length for all three methods.
         private readonly int _keyLen;
 
-        // Stream framing only, and together they come to about 70 KB. A UDP
-        // handler holds its encryptor for the life of the session without ever
-        // touching these, and the relay caches hundreds of handlers, so they
-        // are built on first use rather than in the constructor.
-        private ByteCircularBuffer _encCircularBuffer;
+        // Only the receive side needs staging: TCP reads may split a frame at
+        // any byte. The send side frames directly from the relay's input buffer.
         private ByteCircularBuffer _decCircularBuffer;
+
+        private readonly byte[] _encLengthPlain = new byte[ChunkLenBytes];
+        private readonly byte[] _decLengthCipher = new byte[ChunkLenBytes + TagSize];
+        private readonly byte[] _decLengthPlain = new byte[ChunkLenBytes];
 
         private readonly byte[] _encNonce = new byte[NonceSize];
         private readonly byte[] _decNonce = new byte[NonceSize];
@@ -128,12 +130,25 @@ namespace Shadowsocks.Encryption.AEAD
         // every read that fell short re-opened the same 18 bytes.
         private int _pendingChunkLen = -1;
 
+        private readonly Func<long> _unixTimeSeconds;
+        private readonly Action<byte[], int> _randomBytes;
+
         public AEAD2022Encryptor(string method, string password)
+            : this(method, password,
+                () => DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                RNG.GetBytes)
+        {
+        }
+
+        internal AEAD2022Encryptor(string method, string password,
+            Func<long> unixTimeSeconds, Action<byte[], int> randomBytes)
             : base(method, password)
         {
             _info = _ciphers[method.ToLowerInvariant()];
             _keyLen = _info.KeySize;
             _psk = ParsePreSharedKey(password, _keyLen, method);
+            _unixTimeSeconds = unixTimeSeconds ?? throw new ArgumentNullException(nameof(unixTimeSeconds));
+            _randomBytes = randomBytes ?? throw new ArgumentNullException(nameof(randomBytes));
         }
 
         /// <summary>
@@ -199,7 +214,14 @@ namespace Shadowsocks.Encryption.AEAD
 
         private static void IncrementNonce(byte[] nonce)
         {
-            Sodium.sodium_increment(nonce, (UIntPtr)(uint)NonceSize);
+            for (int i = 0; i < nonce.Length; i++)
+            {
+                nonce[i]++;
+                if (nonce[i] != 0)
+                {
+                    break;
+                }
+            }
         }
 
         private static void WriteUInt16BE(byte[] buf, int offset, int value)
@@ -241,99 +263,91 @@ namespace Shadowsocks.Encryption.AEAD
 
         public override void Encrypt(byte[] buf, int length, byte[] outbuf, out int outlength)
         {
-            if (_encCircularBuffer == null)
+            if (length < 0 || length > buf.Length)
             {
-                _encCircularBuffer = new ByteCircularBuffer(SEND_BUFFER_SIZE);
+                throw new ArgumentOutOfRangeException(nameof(length));
             }
-            _encCircularBuffer.Put(buf, 0, length);
+
             outlength = 0;
+            int inputOffset = 0;
 
             if (!_requestHeaderSent)
             {
-                // Only after it has actually gone out: the chunk loop below
-                // dereferences _encCipher, which the header sets up.
-                WriteRequestHeader(outbuf, ref outlength);
+                inputOffset = WriteRequestHeader(buf, length, outbuf, ref outlength);
                 _requestHeaderSent = true;
             }
 
-            while (_encCircularBuffer.Size > 0)
+            while (inputOffset < length)
             {
-                int chunkLen = Math.Min(_encCircularBuffer.Size, MaxChunkSendSize);
+                int chunkLen = Math.Min(length - inputOffset, MaxChunkSendSize);
                 int framedLen = ChunkLenBytes + TagSize + chunkLen + TagSize;
-                if (outlength + framedLen > outbuf.Length)
+                if (outlength > outbuf.Length - framedLen)
                 {
-                    // Whatever is left stays buffered for the next call. Cannot
-                    // happen while a read is capped at RecvSize, but the buffer
-                    // arithmetic should not depend on that.
-                    logger.Trace("enc outbuf full, leaving the rest buffered");
-                    return;
+                    throw new CryptoErrorException("2022: encryption output buffer is too small");
                 }
 
-                byte[] lenBytes = new byte[ChunkLenBytes];
-                WriteUInt16BE(lenBytes, 0, chunkLen);
-                _encCipher.Seal(_encNonce, lenBytes, ChunkLenBytes, outbuf, outlength);
+                WriteUInt16BE(_encLengthPlain, 0, chunkLen);
+                _encCipher.Seal(_encNonce, _encLengthPlain, 0, ChunkLenBytes, outbuf, outlength);
                 IncrementNonce(_encNonce);
                 outlength += ChunkLenBytes + TagSize;
 
-                byte[] chunk = _encCircularBuffer.Get(chunkLen);
-                _encCipher.Seal(_encNonce, chunk, chunkLen, outbuf, outlength);
+                _encCipher.Seal(_encNonce, buf, inputOffset, chunkLen, outbuf, outlength);
                 IncrementNonce(_encNonce);
                 outlength += chunkLen + TagSize;
+                inputOffset += chunkLen;
             }
         }
 
         /// <summary>
         /// salt || sealed fixed-length header || sealed variable-length header.
-        /// The caller hands us the SOCKS5 address as the first AddrBufLength
-        /// bytes of the stream, exactly the form the header wants.
+        /// Returns the number of bytes consumed from the caller's input.
         /// </summary>
-        private void WriteRequestHeader(byte[] outbuf, ref int outlength)
+        private int WriteRequestHeader(byte[] input, int inputLength, byte[] outbuf, ref int outlength)
         {
-            if (AddrBufLength <= 0)
+            if (AddrBufLength <= 0 || inputLength < AddrBufLength)
             {
                 throw new CryptoErrorException("2022: the target address is not known yet");
             }
 
             _encSalt = new byte[_keyLen];
-            RNG.GetBytes(_encSalt, _keyLen);
+            _randomBytes(_encSalt, _keyLen);
 
             byte[] subkey = new byte[_keyLen];
             Blake3.DeriveSessionSubkey(_psk, _encSalt, subkey);
             _encCipher = new AeadCipher(_info.OpenSslName, subkey, true);
 
-            byte[] address = _encCircularBuffer.Get(AddrBufLength);
-
-            // As much of what we already hold as fits; the rest goes out as
-            // ordinary chunks.
             int room = MaxChunkSendSize - AddrBufLength - ChunkLenBytes;
-            int payloadLen = Math.Max(0, Math.Min(_encCircularBuffer.Size, room));
-
-            // "Either initial payload or padding MUST be present."
+            int payloadLen = Math.Max(0, Math.Min(inputLength - AddrBufLength, room));
             int padLen = payloadLen > 0 ? 0 : RandomPaddingLength();
 
             byte[] varHeader = new byte[AddrBufLength + ChunkLenBytes + padLen + payloadLen];
             int pos = 0;
-            Buffer.BlockCopy(address, 0, varHeader, pos, AddrBufLength);
+            Buffer.BlockCopy(input, 0, varHeader, pos, AddrBufLength);
             pos += AddrBufLength;
             WriteUInt16BE(varHeader, pos, padLen);
             pos += ChunkLenBytes;
             if (padLen > 0)
             {
                 byte[] padding = new byte[padLen];
-                RNG.GetBytes(padding, padLen);
+                _randomBytes(padding, padLen);
                 Buffer.BlockCopy(padding, 0, varHeader, pos, padLen);
                 pos += padLen;
             }
             if (payloadLen > 0)
             {
-                byte[] payload = _encCircularBuffer.Get(payloadLen);
-                Buffer.BlockCopy(payload, 0, varHeader, pos, payloadLen);
+                Buffer.BlockCopy(input, AddrBufLength, varHeader, pos, payloadLen);
             }
 
             byte[] fixedHeader = new byte[FixedRequestHeaderSize];
             fixedHeader[0] = HeaderTypeClientStream;
-            WriteUInt64BE(fixedHeader, 1, (ulong)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            WriteUInt64BE(fixedHeader, 1, (ulong)_unixTimeSeconds());
             WriteUInt16BE(fixedHeader, 1 + TimestampSize, varHeader.Length);
+
+            int required = _keyLen + FixedRequestHeaderSize + TagSize + varHeader.Length + TagSize;
+            if (required > outbuf.Length)
+            {
+                throw new CryptoErrorException("2022: request header does not fit the output buffer");
+            }
 
             Buffer.BlockCopy(_encSalt, 0, outbuf, 0, _keyLen);
             outlength = _keyLen;
@@ -347,14 +361,13 @@ namespace Shadowsocks.Encryption.AEAD
             outlength += varHeader.Length + TagSize;
 
             logger.Trace($"2022 request header sent, {outlength} bytes, padding {padLen}");
+            return AddrBufLength + payloadLen;
         }
 
-        private static int RandomPaddingLength()
+        private int RandomPaddingLength()
         {
             byte[] rand = new byte[2];
-            RNG.GetBytes(rand, 2);
-            // 1..MaxPaddingSize: the padding has to be non-empty when there is
-            // no initial payload to hide the request behind.
+            _randomBytes(rand, 2);
             return (((rand[0] << 8) | rand[1]) % MaxPaddingSize) + 1;
         }
 
@@ -374,7 +387,8 @@ namespace Shadowsocks.Encryption.AEAD
                     return;
                 }
 
-                byte[] salt = _decCircularBuffer.Get(_keyLen);
+                byte[] salt = new byte[_keyLen];
+                _decCircularBuffer.Get(salt, 0, _keyLen);
                 byte[] subkey = new byte[_keyLen];
                 Blake3.DeriveSessionSubkey(_psk, salt, subkey);
                 _decCipher = new AeadCipher(_info.OpenSslName, subkey, false);
@@ -392,9 +406,22 @@ namespace Shadowsocks.Encryption.AEAD
                 {
                     return;
                 }
+                if (outlength > outbuf.Length - _firstResponseChunkLen)
+                {
+                    return;
+                }
 
-                byte[] sealedChunk = _decCircularBuffer.Get(_firstResponseChunkLen + TagSize);
-                outlength += _decCipher.Open(_decNonce, sealedChunk, sealedChunk.Length, outbuf, outlength);
+                byte[] sealedChunk = ArrayPool<byte>.Shared.Rent(_firstResponseChunkLen + TagSize);
+                try
+                {
+                    _decCircularBuffer.Get(sealedChunk, 0, _firstResponseChunkLen + TagSize);
+                    outlength += _decCipher.Open(_decNonce, sealedChunk, 0,
+                        _firstResponseChunkLen + TagSize, outbuf, outlength);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(sealedChunk);
+                }
                 IncrementNonce(_decNonce);
                 _firstResponseChunkPending = false;
             }
@@ -403,30 +430,24 @@ namespace Shadowsocks.Encryption.AEAD
             {
                 if (_pendingChunkLen < 0)
                 {
-                    if (_decCircularBuffer.Size <= ChunkLenBytes + TagSize)
+                    if (_decCircularBuffer.Size < ChunkLenBytes + TagSize)
                     {
                         return;
                     }
 
-                    // Peeked, not consumed: the payload may not have arrived
-                    // yet, and the nonce must not move until we commit to the
-                    // chunk. The length is kept so that a chunk spread over
-                    // several reads is not re-opened once per read.
-                    byte[] sealedLen = _decCircularBuffer.Peek(ChunkLenBytes + TagSize);
-                    byte[] lenBytes = new byte[ChunkLenBytes];
-                    _decCipher.Open(_decNonce, sealedLen, sealedLen.Length, lenBytes, 0);
-                    _pendingChunkLen = ReadUInt16BE(lenBytes, 0);
+                    _decCircularBuffer.CopyTo(_decLengthCipher);
+                    _decCipher.Open(_decNonce, _decLengthCipher, 0, _decLengthCipher.Length,
+                        _decLengthPlain, 0);
+                    _pendingChunkLen = ReadUInt16BE(_decLengthPlain, 0);
                 }
 
                 int chunkLen = _pendingChunkLen;
                 if (_decCircularBuffer.Size < ChunkLenBytes + TagSize + chunkLen + TagSize)
                 {
-                    logger.Trace("not enough data for one chunk yet");
                     return;
                 }
-                if (outlength + chunkLen > outbuf.Length)
+                if (outlength > outbuf.Length - chunkLen)
                 {
-                    logger.Trace("dec outbuf full, leaving the rest buffered");
                     return;
                 }
 
@@ -434,8 +455,17 @@ namespace Shadowsocks.Encryption.AEAD
                 _decCircularBuffer.Skip(ChunkLenBytes + TagSize);
                 _pendingChunkLen = -1;
 
-                byte[] sealedChunk = _decCircularBuffer.Get(chunkLen + TagSize);
-                outlength += _decCipher.Open(_decNonce, sealedChunk, sealedChunk.Length, outbuf, outlength);
+                byte[] sealedChunk = ArrayPool<byte>.Shared.Rent(chunkLen + TagSize);
+                try
+                {
+                    _decCircularBuffer.Get(sealedChunk, 0, chunkLen + TagSize);
+                    outlength += _decCipher.Open(_decNonce, sealedChunk, 0, chunkLen + TagSize,
+                        outbuf, outlength);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(sealedChunk);
+                }
                 IncrementNonce(_decNonce);
             }
         }
@@ -463,7 +493,7 @@ namespace Shadowsocks.Encryption.AEAD
             }
 
             long timestamp = ReadInt64BE(header, 1);
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long now = _unixTimeSeconds();
             long skew = Math.Abs(now - timestamp);
             if (skew > MaxTimestampSkewSeconds)
             {
@@ -512,6 +542,7 @@ namespace Shadowsocks.Encryption.AEAD
         private const int UdpSeparateHeaderSize = UdpSessionIdSize + UdpPacketIdSize;
         private const int PaddingLenBytes = 2;
         private const int XChaChaNonceSize = 24;
+        private const long UdpServerSessionRetentionSeconds = 60;
 
         private const byte HeaderTypeClientPacket = 0x00;
         private const byte HeaderTypeServerPacket = 0x01;
@@ -532,6 +563,9 @@ namespace Shadowsocks.Encryption.AEAD
         private Aes _udpEcb;
         private ICryptoTransform _udpEcbEncrypt;
         private ICryptoTransform _udpEcbDecrypt;
+        private readonly byte[] _udpSeparateHeader = new byte[UdpSeparateHeaderSize];
+        private readonly byte[] _udpNonce = new byte[NonceSize];
+        private readonly byte[] _udpXChaChaNonce = new byte[XChaChaNonceSize];
 
         /// <summary>
         /// One of the server's sessions. SIP022 lets a server answer from a new
@@ -544,6 +578,7 @@ namespace Shadowsocks.Encryption.AEAD
             // null for the chacha method, which keys every packet off the PSK.
             public readonly AeadCipher Cipher;
             public readonly SlidingWindow Window = new SlidingWindow();
+            public long LastSeenUnixSeconds;
 
             public ServerSession(ulong sessionId, AeadCipher cipher)
             {
@@ -588,7 +623,7 @@ namespace Shadowsocks.Encryption.AEAD
             }
 
             _udpClientSessionId = new byte[UdpSessionIdSize];
-            RNG.GetBytes(_udpClientSessionId, UdpSessionIdSize);
+            _randomBytes(_udpClientSessionId, UdpSessionIdSize);
 
             if (!_info.IsAes)
             {
@@ -616,7 +651,7 @@ namespace Shadowsocks.Encryption.AEAD
         private void WriteUdpClientBody(byte[] body, int offset, byte[] buf, int length)
         {
             body[offset] = HeaderTypeClientPacket;
-            WriteUInt64BE(body, offset + 1, (ulong)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            WriteUInt64BE(body, offset + 1, (ulong)_unixTimeSeconds());
             // No padding: SIP022 permits it on UDP but does not ask for it, and
             // a length of zero keeps the packet the size the caller expects.
             WriteUInt16BE(body, offset + 1 + TimestampSize, 0);
@@ -632,21 +667,23 @@ namespace Shadowsocks.Encryption.AEAD
                 throw new CryptoErrorException("2022: UDP packet does not fit the output buffer");
             }
 
-            byte[] separateHeader = new byte[UdpSeparateHeaderSize];
-            Buffer.BlockCopy(_udpClientSessionId, 0, separateHeader, 0, UdpSessionIdSize);
-            WriteUInt64BE(separateHeader, UdpSessionIdSize, _udpClientPacketId++);
+            Buffer.BlockCopy(_udpClientSessionId, 0, _udpSeparateHeader, 0, UdpSessionIdSize);
+            WriteUInt64BE(_udpSeparateHeader, UdpSessionIdSize, _udpClientPacketId++);
+            Buffer.BlockCopy(_udpSeparateHeader, UdpSeparateHeaderSize - NonceSize,
+                _udpNonce, 0, NonceSize);
 
-            // The nonce comes out of the plaintext separate header, not the
-            // encrypted one the server sees first.
-            byte[] nonce = new byte[NonceSize];
-            Buffer.BlockCopy(separateHeader, UdpSeparateHeaderSize - NonceSize, nonce, 0, NonceSize);
-
-            byte[] body = new byte[bodyLen];
-            WriteUdpClientBody(body, 0, buf, length);
-
-            _udpEcbEncrypt.TransformBlock(separateHeader, 0, UdpSeparateHeaderSize, outbuf, 0);
-            _udpEncCipher.Seal(nonce, body, bodyLen, outbuf, UdpSeparateHeaderSize);
-            return packetLen;
+            byte[] body = ArrayPool<byte>.Shared.Rent(bodyLen);
+            try
+            {
+                WriteUdpClientBody(body, 0, buf, length);
+                _udpEcbEncrypt.TransformBlock(_udpSeparateHeader, 0, UdpSeparateHeaderSize, outbuf, 0);
+                _udpEncCipher.Seal(_udpNonce, body, 0, bodyLen, outbuf, UdpSeparateHeaderSize);
+                return packetLen;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(body);
+            }
         }
 
         private int EncryptUdpXChaCha(byte[] buf, int length, byte[] outbuf)
@@ -658,30 +695,31 @@ namespace Shadowsocks.Encryption.AEAD
                 throw new CryptoErrorException("2022: UDP packet does not fit the output buffer");
             }
 
-            byte[] nonce = new byte[XChaChaNonceSize];
-            RNG.GetBytes(nonce, XChaChaNonceSize);
+            _randomBytes(_udpXChaChaNonce, XChaChaNonceSize);
+            Buffer.BlockCopy(_udpXChaChaNonce, 0, outbuf, 0, XChaChaNonceSize);
 
-            byte[] body = new byte[bodyLen];
-            Buffer.BlockCopy(_udpClientSessionId, 0, body, 0, UdpSessionIdSize);
-            WriteUInt64BE(body, UdpSessionIdSize, _udpClientPacketId++);
-            WriteUdpClientBody(body, UdpInlineIdsSize, buf, length);
-
-            byte[] sealedBody = new byte[bodyLen + TagSize];
-            ulong sealedLen = 0;
-            int ret = Sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
-                sealedBody, ref sealedLen,
-                body, (ulong)bodyLen,
-                null, 0,
-                null, nonce,
-                _psk);
-            if (ret != 0)
+            byte[] body = ArrayPool<byte>.Shared.Rent(bodyLen);
+            try
             {
-                throw new CryptoErrorException($"2022: xchacha20-poly1305 seal failed, ret {ret}");
-            }
+                Buffer.BlockCopy(_udpClientSessionId, 0, body, 0, UdpSessionIdSize);
+                WriteUInt64BE(body, UdpSessionIdSize, _udpClientPacketId++);
+                WriteUdpClientBody(body, UdpInlineIdsSize, buf, length);
 
-            Buffer.BlockCopy(nonce, 0, outbuf, 0, XChaChaNonceSize);
-            Buffer.BlockCopy(sealedBody, 0, outbuf, XChaChaNonceSize, (int)sealedLen);
-            return XChaChaNonceSize + (int)sealedLen;
+                ulong sealedLen = 0;
+                int ret = Sodium.XChaCha20Poly1305IetfEncrypt(
+                    outbuf, XChaChaNonceSize, ref sealedLen,
+                    body, 0, (ulong)bodyLen,
+                    _udpXChaChaNonce, 0, _psk);
+                if (ret != 0)
+                {
+                    throw new CryptoErrorException($"2022: xchacha20-poly1305 seal failed, ret {ret}");
+                }
+                return XChaChaNonceSize + checked((int)sealedLen);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(body);
+            }
         }
 
         private int DecryptUdpAes(byte[] buf, int length, byte[] outbuf)
@@ -691,41 +729,46 @@ namespace Shadowsocks.Encryption.AEAD
                 throw new CryptoErrorException("2022: UDP packet is too short to hold a header");
             }
 
-            byte[] separateHeader = new byte[UdpSeparateHeaderSize];
-            _udpEcbDecrypt.TransformBlock(buf, 0, UdpSeparateHeaderSize, separateHeader, 0);
+            _udpEcbDecrypt.TransformBlock(buf, 0, UdpSeparateHeaderSize, _udpSeparateHeader, 0);
+            ulong serverSessionId = ReadUInt64BE(_udpSeparateHeader, 0);
+            ulong packetId = ReadUInt64BE(_udpSeparateHeader, UdpSessionIdSize);
 
-            byte[] sessionIdBytes = new byte[UdpSessionIdSize];
-            Buffer.BlockCopy(separateHeader, 0, sessionIdBytes, 0, UdpSessionIdSize);
-            ulong packetId = ReadUInt64BE(separateHeader, UdpSessionIdSize);
+            ServerSession known = FindServerSession(serverSessionId);
+            ServerSession candidate = known;
+            if (candidate == null)
+            {
+                byte[] sessionIdBytes = new byte[UdpSessionIdSize];
+                Buffer.BlockCopy(_udpSeparateHeader, 0, sessionIdBytes, 0, UdpSessionIdSize);
+                candidate = CreateServerSession(serverSessionId, sessionIdBytes);
+            }
 
-            // The separate header is only ECB-encrypted, never authenticated, so
-            // nothing it says may change our state until the body opens.
-            ServerSession known = FindServerSession(ReadUInt64BE(separateHeader, 0));
-            ServerSession candidate = known
-                ?? CreateServerSession(ReadUInt64BE(separateHeader, 0), sessionIdBytes);
             try
             {
-                byte[] nonce = new byte[NonceSize];
-                Buffer.BlockCopy(separateHeader, UdpSeparateHeaderSize - NonceSize, nonce, 0, NonceSize);
+                Buffer.BlockCopy(_udpSeparateHeader, UdpSeparateHeaderSize - NonceSize,
+                    _udpNonce, 0, NonceSize);
 
                 int sealedLen = length - UdpSeparateHeaderSize;
-                byte[] sealedBody = new byte[sealedLen];
-                Buffer.BlockCopy(buf, UdpSeparateHeaderSize, sealedBody, 0, sealedLen);
-
-                byte[] body = new byte[sealedLen - TagSize];
-                int bodyLen = candidate.Cipher.Open(nonce, sealedBody, sealedLen, body, 0);
-
-                int outlength = UnwrapUdpServerBody(body, bodyLen, 0, packetId, candidate, outbuf);
-                if (known == null)
+                int maxBodyLen = sealedLen - TagSize;
+                byte[] body = ArrayPool<byte>.Shared.Rent(Math.Max(maxBodyLen, 1));
+                try
                 {
-                    CommitServerSession(candidate);
-                    candidate = null;
+                    int bodyLen = candidate.Cipher.Open(_udpNonce, buf, UdpSeparateHeaderSize,
+                        sealedLen, body, 0);
+                    int outlength = UnwrapUdpServerBody(body, bodyLen, 0, packetId, candidate, outbuf);
+                    if (known == null)
+                    {
+                        CommitServerSession(candidate);
+                        candidate = null;
+                    }
+                    return outlength;
                 }
-                return outlength;
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(body);
+                }
             }
             finally
             {
-                // Still uncommitted here means the packet was refused.
                 if (known == null)
                 {
                     candidate?.Cipher?.Dispose();
@@ -740,41 +783,38 @@ namespace Shadowsocks.Encryption.AEAD
                 throw new CryptoErrorException("2022: UDP packet is too short to hold a header");
             }
 
-            byte[] nonce = new byte[XChaChaNonceSize];
-            Buffer.BlockCopy(buf, 0, nonce, 0, XChaChaNonceSize);
-
             int sealedLen = length - XChaChaNonceSize;
-            byte[] sealedBody = new byte[sealedLen];
-            Buffer.BlockCopy(buf, XChaChaNonceSize, sealedBody, 0, sealedLen);
-
-            byte[] body = new byte[sealedLen - TagSize];
-            ulong bodyLen = 0;
-            int ret = Sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
-                body, ref bodyLen,
-                null,
-                sealedBody, (ulong)sealedLen,
-                null, 0,
-                nonce, _psk);
-            if (ret != 0)
+            int maxBodyLen = sealedLen - TagSize;
+            byte[] body = ArrayPool<byte>.Shared.Rent(Math.Max(maxBodyLen, 1));
+            try
             {
-                throw new CryptoErrorException($"2022: xchacha20-poly1305 open failed, ret {ret}");
+                ulong bodyLen = 0;
+                int ret = Sodium.XChaCha20Poly1305IetfDecrypt(
+                    body, 0, ref bodyLen,
+                    buf, XChaChaNonceSize, (ulong)sealedLen,
+                    buf, 0, _psk);
+                if (ret != 0)
+                {
+                    throw new CryptoErrorException($"2022: xchacha20-poly1305 open failed, ret {ret}");
+                }
+
+                ulong serverSessionId = ReadUInt64BE(body, 0);
+                ulong packetId = ReadUInt64BE(body, UdpSessionIdSize);
+                ServerSession known = FindServerSession(serverSessionId);
+                ServerSession candidate = known ?? CreateServerSession(serverSessionId, null);
+
+                int outlength = UnwrapUdpServerBody(body, checked((int)bodyLen), UdpInlineIdsSize,
+                    packetId, candidate, outbuf);
+                if (known == null)
+                {
+                    CommitServerSession(candidate);
+                }
+                return outlength;
             }
-
-            // Here the ids come out of an already-authenticated body, but the
-            // session table still only moves once the header checks out.
-            ulong serverSessionId = ReadUInt64BE(body, 0);
-            ulong packetId = ReadUInt64BE(body, UdpSessionIdSize);
-
-            ServerSession known = FindServerSession(serverSessionId);
-            ServerSession candidate = known ?? CreateServerSession(serverSessionId, null);
-
-            int outlength = UnwrapUdpServerBody(body, (int)bodyLen, UdpInlineIdsSize, packetId,
-                candidate, outbuf);
-            if (known == null)
+            finally
             {
-                CommitServerSession(candidate);
+                ArrayPool<byte>.Shared.Return(body);
             }
-            return outlength;
         }
 
         /// <summary>
@@ -796,7 +836,8 @@ namespace Shadowsocks.Encryption.AEAD
             }
 
             long timestamp = ReadInt64BE(body, offset + 1);
-            long skew = Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp);
+            long now = _unixTimeSeconds();
+            long skew = Math.Abs(now - timestamp);
             if (skew > MaxTimestampSkewSeconds)
             {
                 throw new CryptoErrorException(
@@ -819,18 +860,20 @@ namespace Shadowsocks.Encryption.AEAD
                 throw new CryptoErrorException("2022: UDP reply padding runs past the packet");
             }
 
-            // Only now, with the header believed: SIP022 says the window moves
-            // on validated packets, so a forged id cannot push it forward.
-            if (!session.Window.TryAccept(packetId))
-            {
-                throw new CryptoErrorException($"2022: UDP packet id {packetId} is a replay or too old");
-            }
-
             int payloadLen = bodyLen - payloadOffset;
             if (payloadLen > outbuf.Length)
             {
                 throw new CryptoErrorException("2022: UDP reply does not fit the output buffer");
             }
+
+            // Only after every semantic check succeeds: SIP022 forbids moving
+            // the replay window for packets that fail header validation.
+            if (!session.Window.TryAccept(packetId))
+            {
+                throw new CryptoErrorException($"2022: UDP packet id {packetId} is a replay or too old");
+            }
+            session.LastSeenUnixSeconds = now;
+
             Buffer.BlockCopy(body, payloadOffset, outbuf, 0, payloadLen);
             return payloadLen;
         }
@@ -866,8 +909,21 @@ namespace Shadowsocks.Encryption.AEAD
 
         private void CommitServerSession(ServerSession session)
         {
-            // Keep the current one and the one before it, which is the least
-            // SIP022 allows a client to remember; the third oldest is dropped.
+            // SIP022 permits a client to retain exactly one old and one current
+            // server session only if a third session is rejected while the old
+            // one has been active within the last minute. This prevents an old
+            // session from being forgotten and then recreated with an empty
+            // replay window.
+            if (_udpServerSession != null && _udpPreviousServerSession != null)
+            {
+                long age = _unixTimeSeconds() - _udpPreviousServerSession.LastSeenUnixSeconds;
+                if (age < UdpServerSessionRetentionSeconds)
+                {
+                    throw new CryptoErrorException(
+                        "2022: refusing a third UDP server session before the old session expires");
+                }
+            }
+
             _udpPreviousServerSession?.Cipher?.Dispose();
             _udpPreviousServerSession = _udpServerSession;
             _udpServerSession = session;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -144,23 +145,32 @@ namespace Shadowsocks.Controller
             public void Send(byte[] data, int length)
             {
                 lastActivity = DateTime.Now;
-                byte[] dataIn = new byte[length - 3];
-                Array.Copy(data, 3, dataIn, 0, length - 3);
-                byte[] dataOut = new byte[65536];  // enough space for AEAD ciphers
-                int outlen;
+                int inputLength = length - 3;
+                byte[] dataIn = ArrayPool<byte>.Shared.Rent(Math.Max(inputLength, 1));
+                byte[] dataOut = ArrayPool<byte>.Shared.Rent(65536);
                 try
                 {
-                    _encryptor.EncryptUDP(dataIn, length - 3, dataOut, out outlen);
+                    Buffer.BlockCopy(data, 3, dataIn, 0, inputLength);
+                    int outlen;
+                    try
+                    {
+                        _encryptor.EncryptUDP(dataIn, inputLength, dataOut, out outlen);
+                    }
+                    catch (CryptoErrorException e)
+                    {
+                        // Drop the datagram rather than the session: UDP is lossy
+                        // anyway, and the next packet may well be fine.
+                        logger.Warn($"UDP encryption failed, dropping the packet: {e.Message}");
+                        return;
+                    }
+                    logger.Debug(_localEndPoint, _remoteEndPoint, outlen, "UDP Relay");
+                    _remote?.SendTo(dataOut, outlen, SocketFlags.None, _remoteEndPoint);
                 }
-                catch (CryptoErrorException e)
+                finally
                 {
-                    // Drop the datagram rather than the session: UDP is lossy
-                    // anyway, and the next packet may well be fine.
-                    logger.Warn($"UDP encryption failed, dropping the packet: {e.Message}");
-                    return;
+                    ArrayPool<byte>.Shared.Return(dataIn);
+                    ArrayPool<byte>.Shared.Return(dataOut);
                 }
-                logger.Debug(_localEndPoint, _remoteEndPoint, outlen, "UDP Relay");
-                _remote?.SendTo(dataOut, outlen, SocketFlags.None, _remoteEndPoint);
             }
 
             public void Receive()
@@ -173,6 +183,8 @@ namespace Shadowsocks.Controller
             public void RecvFromCallback(IAsyncResult ar)
             {
                 bool disposed = false;
+                byte[] dataOut = null;
+                byte[] sendBuf = null;
                 try
                 {
                     if (_remote == null) return;
@@ -180,13 +192,15 @@ namespace Shadowsocks.Controller
                     int bytesRead = _remote.EndReceiveFrom(ar, ref remoteEndPoint);
                     lastActivity = DateTime.Now;
 
-                    byte[] dataOut = new byte[bytesRead];
+                    dataOut = ArrayPool<byte>.Shared.Rent(65536);
                     int outlen;
-
                     _encryptor.DecryptUDP(_buffer, bytesRead, dataOut, out outlen);
 
-                    byte[] sendBuf = new byte[outlen + 3];
-                    Array.Copy(dataOut, 0, sendBuf, 3, outlen);
+                    sendBuf = ArrayPool<byte>.Shared.Rent(outlen + 3);
+                    sendBuf[0] = 0;
+                    sendBuf[1] = 0;
+                    sendBuf[2] = 0;
+                    Buffer.BlockCopy(dataOut, 0, sendBuf, 3, outlen);
 
                     logger.Debug(_localEndPoint, _remoteEndPoint, outlen, "UDP Relay");
                     _local?.SendTo(sendBuf, outlen + 3, 0, _localEndPoint);
@@ -208,6 +222,9 @@ namespace Shadowsocks.Controller
                 }
                 finally
                 {
+                    if (sendBuf != null) ArrayPool<byte>.Shared.Return(sendBuf);
+                    if (dataOut != null) ArrayPool<byte>.Shared.Return(dataOut);
+
                     // Re-arm unconditionally. This used to sit at the end of the
                     // try block, so any failure above -- a rejected packet
                     // included -- left the handler deaf for the rest of its life.

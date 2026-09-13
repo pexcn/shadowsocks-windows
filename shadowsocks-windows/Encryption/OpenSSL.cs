@@ -31,11 +31,8 @@ namespace Shadowsocks.Encryption
         }
 
         /// <summary>
-        /// Need init cipher context after EVP_CipherFinal_ex to reuse context
+        /// Need init cipher context after EVP_CipherFinal_ex to reuse context.
         /// </summary>
-        /// <param name="ctx"></param>
-        /// <param name="cipherType"></param>
-        /// <param name="nonce"></param>
         public static void SetCtxNonce(IntPtr ctx, byte[] nonce, bool isEncrypt)
         {
             var ret = EVP_CipherInit_ex(ctx, IntPtr.Zero,
@@ -45,51 +42,81 @@ namespace Shadowsocks.Encryption
             if (ret != 1) throw new System.Exception("openssl: fail to set AEAD nonce");
         }
 
+        /// <summary>
+        /// Run EVP_CipherUpdate directly between two managed arrays without an
+        /// intermediate managed buffer. The arrays stay pinned only for the
+        /// duration of the native call.
+        /// </summary>
+        public static unsafe int CipherUpdate(IntPtr ctx, byte[] output, int outputOffset,
+            out int outputLength, byte[] input, int inputOffset, int inputLength)
+        {
+            if (output == null) throw new ArgumentNullException(nameof(output));
+            if (input == null) throw new ArgumentNullException(nameof(input));
+            if (inputLength < 0)
+                throw new ArgumentOutOfRangeException(nameof(inputLength));
+            if (outputOffset < 0 || outputOffset > output.Length - inputLength)
+                throw new ArgumentOutOfRangeException(nameof(outputOffset));
+            if (inputOffset < 0 || inputOffset > input.Length - inputLength)
+                throw new ArgumentOutOfRangeException(nameof(inputOffset));
+
+            fixed (byte* outputBase = output)
+            fixed (byte* inputBase = input)
+            {
+                return EVP_CipherUpdatePtr(ctx,
+                    (IntPtr)(outputBase + outputOffset), out outputLength,
+                    (IntPtr)(inputBase + inputOffset), inputLength);
+            }
+        }
+
+        public static unsafe int CipherFinal(IntPtr ctx, byte[] output, int outputOffset,
+            ref int outputLength)
+        {
+            if (output == null) throw new ArgumentNullException(nameof(output));
+            if (outputOffset < 0 || outputOffset > output.Length)
+                throw new ArgumentOutOfRangeException(nameof(outputOffset));
+
+            fixed (byte* outputBase = output)
+            {
+                return EVP_CipherFinalPtr(ctx, (IntPtr)(outputBase + outputOffset), ref outputLength);
+            }
+        }
+
+        public static unsafe void AEADGetTag(IntPtr ctx, byte[] buffer, int offset, int taglen)
+        {
+            if (buffer == null) throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0 || taglen < 0 || offset > buffer.Length - taglen)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
+            fixed (byte* basePtr = buffer)
+            {
+                var ret = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, taglen,
+                    (IntPtr)(basePtr + offset));
+                if (ret != 1) throw new CryptoErrorException("openssl: fail to get AEAD tag");
+            }
+        }
+
         public static void AEADGetTag(IntPtr ctx, byte[] tagbuf, int taglen)
         {
-            IntPtr tagBufIntPtr = IntPtr.Zero;
-            try
+            AEADGetTag(ctx, tagbuf, 0, taglen);
+        }
+
+        public static unsafe void AEADSetTag(IntPtr ctx, byte[] buffer, int offset, int taglen)
+        {
+            if (buffer == null) throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0 || taglen < 0 || offset > buffer.Length - taglen)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
+            fixed (byte* basePtr = buffer)
             {
-                tagBufIntPtr = Marshal.AllocHGlobal(taglen);
-                var ret = EVP_CIPHER_CTX_ctrl(ctx,
-                    EVP_CTRL_AEAD_GET_TAG, taglen, tagBufIntPtr);
-                if (ret != 1) throw new CryptoErrorException("openssl: fail to get AEAD tag");
-                // take tag from unmanaged memory
-                Marshal.Copy(tagBufIntPtr, tagbuf, 0, taglen);
-            }
-            finally
-            {
-                if (tagBufIntPtr != IntPtr.Zero)
-                {
-                    Marshal.FreeHGlobal(tagBufIntPtr);
-                }
+                var ret = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, taglen,
+                    (IntPtr)(basePtr + offset));
+                if (ret != 1) throw new CryptoErrorException("openssl: fail to set AEAD tag");
             }
         }
 
         public static void AEADSetTag(IntPtr ctx, byte[] tagbuf, int taglen)
         {
-            IntPtr tagBufIntPtr = IntPtr.Zero;
-            try
-            {
-                // allocate unmanaged memory for tag
-                tagBufIntPtr = Marshal.AllocHGlobal(taglen);
-
-                // copy tag to unmanaged memory
-                Marshal.Copy(tagbuf, 0, tagBufIntPtr, taglen);
-
-                var ret = EVP_CIPHER_CTX_ctrl(ctx,
-                    EVP_CTRL_AEAD_SET_TAG, taglen, tagBufIntPtr);
-
-                if (ret != 1) throw new CryptoErrorException("openssl: fail to set AEAD tag");
-
-            }
-            finally
-            {
-                if (tagBufIntPtr != IntPtr.Zero)
-                {
-                    Marshal.FreeHGlobal(tagBufIntPtr);
-                }
-            }
+            AEADSetTag(ctx, tagbuf, 0, taglen);
         }
 
         [SuppressUnmanagedCodeSecurity]
@@ -111,8 +138,17 @@ namespace Shadowsocks.Encryption
             out int outl, byte[] inb, int inl);
 
         [SuppressUnmanagedCodeSecurity]
+        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl, EntryPoint = "EVP_CipherUpdate")]
+        private static extern int EVP_CipherUpdatePtr(IntPtr ctx, IntPtr outb,
+            out int outl, IntPtr inb, int inl);
+
+        [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
         public static extern int EVP_CipherFinal_ex(IntPtr ctx, byte[] outm, ref int outl);
+
+        [SuppressUnmanagedCodeSecurity]
+        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl, EntryPoint = "EVP_CipherFinal_ex")]
+        private static extern int EVP_CipherFinalPtr(IntPtr ctx, IntPtr outm, ref int outl);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
@@ -129,8 +165,6 @@ namespace Shadowsocks.Encryption
         /// <summary>
         /// simulate NUL-terminated string
         /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
         [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr EVP_get_cipherbyname(byte[] name);
