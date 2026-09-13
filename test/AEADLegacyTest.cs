@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Shadowsocks.Encryption;
 using Shadowsocks.Encryption.AEAD;
 
 namespace Shadowsocks.Test
@@ -64,6 +65,35 @@ namespace Shadowsocks.Test
                 Assert.AreEqual((uint)expectedSecond.Length, actualLength);
                 CollectionAssert.AreEqual(expectedSecond, actual);
             }
+        }
+
+        [TestMethod]
+        public void SodiumPointerWrappersRejectShortOutputBuffers()
+        {
+            byte[] input = new byte[32];
+            byte[] nonce = new byte[12];
+            byte[] key = new byte[32];
+
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            {
+                byte[] tooSmall = new byte[input.Length + 15];
+                ulong outputLength = 0;
+                Sodium.ChaCha20Poly1305IetfEncrypt(tooSmall, 0, ref outputLength,
+                    input, 0, (ulong)input.Length, nonce, 0, key);
+            });
+
+            byte[] ciphertext = new byte[input.Length + 16];
+            ulong cipherLength = 0;
+            Assert.AreEqual(0, Sodium.ChaCha20Poly1305IetfEncrypt(ciphertext, 0, ref cipherLength,
+                input, 0, (ulong)input.Length, nonce, 0, key));
+
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            {
+                byte[] tooSmall = new byte[input.Length - 1];
+                ulong outputLength = 0;
+                Sodium.ChaCha20Poly1305IetfDecrypt(tooSmall, 0, ref outputLength,
+                    ciphertext, 0, cipherLength, nonce, 0, key);
+            });
         }
 
         private static byte[] EncryptOnce(string method, string password, byte[] salt, byte[] plaintext)

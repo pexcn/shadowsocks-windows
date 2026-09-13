@@ -49,12 +49,14 @@ namespace Shadowsocks.Encryption
         public static extern int crypto_aead_xchacha20poly1305_ietf_decrypt(byte[] m, ref ulong mlen_p, byte[] nsec, byte[] c,
             ulong clen, byte[] ad, ulong adlen, byte[] npub, byte[] k);
 
+        private const int AeadTagSize = 16;
+
         internal static unsafe int ChaCha20Poly1305IetfEncrypt(byte[] output, int outputOffset,
             ref ulong outputLength, byte[] input, int inputOffset, ulong inputLength,
             byte[] nonce, int nonceOffset, byte[] key)
         {
-            ValidateSlices(output, outputOffset, input, inputOffset, inputLength,
-                nonce, nonceOffset, 12, key);
+            ValidateSlices(output, outputOffset, EncryptOutputLength(inputLength),
+                input, inputOffset, inputLength, nonce, nonceOffset, 12, key);
             fixed (byte* outputBase = output)
             fixed (byte* inputBase = input)
             fixed (byte* nonceBase = nonce)
@@ -72,8 +74,8 @@ namespace Shadowsocks.Encryption
             ref ulong outputLength, byte[] input, int inputOffset, ulong inputLength,
             byte[] nonce, int nonceOffset, byte[] key)
         {
-            ValidateSlices(output, outputOffset, input, inputOffset, inputLength,
-                nonce, nonceOffset, 12, key);
+            ValidateSlices(output, outputOffset, DecryptOutputLength(inputLength),
+                input, inputOffset, inputLength, nonce, nonceOffset, 12, key);
             fixed (byte* outputBase = output)
             fixed (byte* inputBase = input)
             fixed (byte* nonceBase = nonce)
@@ -91,8 +93,8 @@ namespace Shadowsocks.Encryption
             ref ulong outputLength, byte[] input, int inputOffset, ulong inputLength,
             byte[] nonce, int nonceOffset, byte[] key)
         {
-            ValidateSlices(output, outputOffset, input, inputOffset, inputLength,
-                nonce, nonceOffset, 24, key);
+            ValidateSlices(output, outputOffset, EncryptOutputLength(inputLength),
+                input, inputOffset, inputLength, nonce, nonceOffset, 24, key);
             fixed (byte* outputBase = output)
             fixed (byte* inputBase = input)
             fixed (byte* nonceBase = nonce)
@@ -110,8 +112,8 @@ namespace Shadowsocks.Encryption
             ref ulong outputLength, byte[] input, int inputOffset, ulong inputLength,
             byte[] nonce, int nonceOffset, byte[] key)
         {
-            ValidateSlices(output, outputOffset, input, inputOffset, inputLength,
-                nonce, nonceOffset, 24, key);
+            ValidateSlices(output, outputOffset, DecryptOutputLength(inputLength),
+                input, inputOffset, inputLength, nonce, nonceOffset, 24, key);
             fixed (byte* outputBase = output)
             fixed (byte* inputBase = input)
             fixed (byte* nonceBase = nonce)
@@ -125,7 +127,21 @@ namespace Shadowsocks.Encryption
             }
         }
 
-        private static void ValidateSlices(byte[] output, int outputOffset,
+        private static int EncryptOutputLength(ulong inputLength)
+        {
+            if (inputLength > int.MaxValue - AeadTagSize)
+                throw new ArgumentOutOfRangeException(nameof(inputLength));
+            return (int)inputLength + AeadTagSize;
+        }
+
+        private static int DecryptOutputLength(ulong inputLength)
+        {
+            if (inputLength < AeadTagSize || inputLength > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(inputLength));
+            return (int)inputLength - AeadTagSize;
+        }
+
+        private static void ValidateSlices(byte[] output, int outputOffset, int outputLength,
             byte[] input, int inputOffset, ulong inputLength,
             byte[] nonce, int nonceOffset, int nonceLength, byte[] key)
         {
@@ -133,7 +149,7 @@ namespace Shadowsocks.Encryption
             if (input == null) throw new ArgumentNullException(nameof(input));
             if (nonce == null) throw new ArgumentNullException(nameof(nonce));
             if (key == null) throw new ArgumentNullException(nameof(key));
-            if (outputOffset < 0 || outputOffset > output.Length)
+            if (outputOffset < 0 || outputLength < 0 || outputOffset > output.Length - outputLength)
                 throw new ArgumentOutOfRangeException(nameof(outputOffset));
             if (inputLength > int.MaxValue || inputOffset < 0 || inputOffset > input.Length - (int)inputLength)
                 throw new ArgumentOutOfRangeException(nameof(inputOffset));

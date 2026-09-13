@@ -190,11 +190,14 @@ namespace Shadowsocks.Controller
                     if (_remote == null) return;
                     EndPoint remoteEndPoint = new IPEndPoint(GetIPAddress(), 0);
                     int bytesRead = _remote.EndReceiveFrom(ar, ref remoteEndPoint);
-                    lastActivity = DateTime.Now;
 
                     dataOut = ArrayPool<byte>.Shared.Rent(65536);
                     int outlen;
                     _encryptor.DecryptUDP(_buffer, bytesRead, dataOut, out outlen);
+                    // Only authenticated packets refresh the idle timeout. Moving this
+                    // after DecryptUDP prevents unauthenticated traffic from keeping an
+                    // otherwise idle UDP handler alive.
+                    lastActivity = DateTime.Now;
 
                     sendBuf = ArrayPool<byte>.Shared.Rent(outlen + 3);
                     sendBuf[0] = 0;
