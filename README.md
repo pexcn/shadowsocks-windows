@@ -17,7 +17,7 @@ Download the latest release from [release page].
 
 ## Requirements
 
-.NET Framework 4.8 or higher, Microsoft [Visual C++ 2015 Redistributable] (x64) .
+.NET Framework 4.8 or higher.
 
 ## Basics
 
@@ -88,7 +88,6 @@ libsscrypto (GPLv2)    https://github.com/shadowsocks/libsscrypto
 [release page]: https://github.com/pexcn/shadowsocks-windows/releases
 [Servers]:      https://github.com/shadowsocks/shadowsocks/wiki/Ports-and-Clients#linux--server-side
 [中文说明]:     https://github.com/shadowsocks/shadowsocks-windows/wiki/Shadowsocks-Windows-%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E
-[Visual C++ 2015 Redistributable]:     https://www.microsoft.com/en-us/download/details.aspx?id=53840
 [GPLv3]:        https://github.com/shadowsocks/shadowsocks-windows/blob/master/LICENSE.txt
 [Working with non SIP003 standard Plugin]: https://github.com/shadowsocks/shadowsocks-windows/wiki/Working-with-non-SIP003-standard-Plugin
 [Experimental Features]: https://github.com/shadowsocks/shadowsocks-windows/wiki/Experimental

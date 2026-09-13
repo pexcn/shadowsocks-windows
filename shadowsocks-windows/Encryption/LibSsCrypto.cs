@@ -52,8 +52,7 @@ namespace Shadowsocks.Encryption
                 {
                     int error = Marshal.GetLastWin32Error();
                     throw new DllNotFoundException(
-                        $"Failed to load {dllPath} (LoadLibrary failed with error {error}). " +
-                        "Shadowsocks is 64-bit and needs the x64 Visual C++ Redistributable.");
+                        $"Failed to load {dllPath} (LoadLibrary failed with error {error}).");
                 }
 
                 _loaded = true;
