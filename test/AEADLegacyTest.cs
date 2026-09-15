@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Shadowsocks.Encryption;
@@ -68,6 +69,35 @@ namespace Shadowsocks.Test
         }
 
         [TestMethod]
+        public void TcpChunkLengthIsDecryptedOnlyOnceWhilePayloadIsFragmented()
+        {
+            using (var encryptor = new CountingAEADEncryptor())
+            {
+                byte[] output = new byte[3];
+                int outputLength;
+
+                encryptor.Decrypt(new byte[] { 0, 0, 3, 0 }, 4, output, out outputLength);
+                Assert.AreEqual(0, outputLength);
+                Assert.AreEqual(1, encryptor.DecryptCallCount);
+
+                byte[] payload = { (byte)'a', (byte)'b', (byte)'c', 0 };
+                for (int i = 0; i < payload.Length; i++)
+                {
+                    encryptor.Decrypt(new[] { payload[i] }, 1, output, out outputLength);
+                    if (i < payload.Length - 1)
+                    {
+                        Assert.AreEqual(0, outputLength);
+                        Assert.AreEqual(1, encryptor.DecryptCallCount);
+                    }
+                }
+
+                Assert.AreEqual(3, outputLength);
+                Assert.AreEqual(2, encryptor.DecryptCallCount);
+                CollectionAssert.AreEqual(Encoding.ASCII.GetBytes("abc"), output);
+            }
+        }
+
+        [TestMethod]
         public void SodiumPointerWrappersRejectShortOutputBuffers()
         {
             byte[] input = new byte[32];
@@ -106,6 +136,44 @@ namespace Shadowsocks.Test
                 encryptor.cipherEncrypt(plaintext, (uint)plaintext.Length, output, ref length);
                 Assert.AreEqual((uint)output.Length, length);
                 return output;
+            }
+        }
+
+        private sealed class CountingAEADEncryptor : AEADEncryptor
+        {
+            internal int DecryptCallCount { get; private set; }
+
+            internal CountingAEADEncryptor()
+                : base("counting", string.Empty)
+            {
+            }
+
+            protected override Dictionary<string, EncryptorInfo> getCiphers()
+            {
+                return new Dictionary<string, EncryptorInfo>
+                {
+                    { "counting", new EncryptorInfo(16, 1, 1, 1, 1) }
+                };
+            }
+
+            protected override int CipherEncrypt(byte[] plaintext, int plainOffset, int plainLen,
+                byte[] ciphertext, int cipherOffset)
+            {
+                Buffer.BlockCopy(plaintext, plainOffset, ciphertext, cipherOffset, plainLen);
+                return plainLen + 1;
+            }
+
+            protected override int CipherDecrypt(byte[] ciphertext, int cipherOffset, int cipherLen,
+                byte[] plaintext, int plainOffset)
+            {
+                DecryptCallCount++;
+                int plainLen = cipherLen - 1;
+                Buffer.BlockCopy(ciphertext, cipherOffset, plaintext, plainOffset, plainLen);
+                return plainLen;
+            }
+
+            public override void Dispose()
+            {
             }
         }
     }

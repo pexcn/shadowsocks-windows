@@ -24,6 +24,7 @@ namespace Shadowsocks.Encryption.AEAD
         private byte[] _encLengthPlain;
         private byte[] _decLengthCipher;
         private byte[] _decLengthPlain;
+        private int _pendingChunkLen = -1;
 
         public const int CHUNK_LEN_BYTES = 2;
         public const uint CHUNK_LEN_MASK = 0x3FFFu;
@@ -255,22 +256,26 @@ namespace Shadowsocks.Encryption.AEAD
             while (true)
             {
                 int bufSize = _decCircularBuffer.Size;
-                if (bufSize < CHUNK_LEN_BYTES + tagLen)
+                if (_pendingChunkLen < 0)
                 {
-                    return;
+                    if (bufSize < CHUNK_LEN_BYTES + tagLen)
+                    {
+                        return;
+                    }
+
+                    _decCircularBuffer.CopyTo(_decLengthCipher);
+                    int decLength = CipherDecrypt(_decLengthCipher, 0, _decLengthCipher.Length,
+                        _decLengthPlain, 0);
+                    Debug.Assert(decLength == CHUNK_LEN_BYTES);
+                    _pendingChunkLen = (_decLengthPlain[0] << 8) | _decLengthPlain[1];
+                    if (_pendingChunkLen > CHUNK_LEN_MASK)
+                    {
+                        logger.Error($"Invalid chunk length: {_pendingChunkLen}");
+                        throw new CryptoErrorException();
+                    }
                 }
 
-                _decCircularBuffer.CopyTo(_decLengthCipher);
-                int decLength = CipherDecrypt(_decLengthCipher, 0, _decLengthCipher.Length,
-                    _decLengthPlain, 0);
-                Debug.Assert(decLength == CHUNK_LEN_BYTES);
-                int chunkLen = (_decLengthPlain[0] << 8) | _decLengthPlain[1];
-                if (chunkLen > CHUNK_LEN_MASK)
-                {
-                    logger.Error($"Invalid chunk length: {chunkLen}");
-                    throw new CryptoErrorException();
-                }
-
+                int chunkLen = _pendingChunkLen;
                 int wholeChunkLength = CHUNK_LEN_BYTES + tagLen + chunkLen + tagLen;
                 if (bufSize < wholeChunkLength)
                 {
@@ -283,6 +288,7 @@ namespace Shadowsocks.Encryption.AEAD
 
                 IncrementNonce(false);
                 _decCircularBuffer.Skip(CHUNK_LEN_BYTES + tagLen);
+                _pendingChunkLen = -1;
 
                 byte[] encryptedChunk = ArrayPool<byte>.Shared.Rent(chunkLen + tagLen);
                 try
