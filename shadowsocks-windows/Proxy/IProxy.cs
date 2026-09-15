@@ -33,6 +33,8 @@ namespace Shadowsocks.Proxy
 
         void Shutdown(SocketShutdown how);
 
+        void Abort();
+
         void Close();
     }
 }

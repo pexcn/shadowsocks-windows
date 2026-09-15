@@ -246,6 +246,41 @@ namespace Shadowsocks.Util.Sockets
             _activeSocket.Shutdown(how);
         }
 
+        public void Abort()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            var lockTaken = false;
+            if (!_socketSyncLock.IsHeldByCurrentThread)
+            {
+                _socketSyncLock.TryEnter(ref lockTaken);
+            }
+            try
+            {
+                _disposed = true;
+                if (_activeSocket != null)
+                {
+                    try
+                    {
+                        _activeSocket.LingerState = new LingerOption(true, 0);
+                    }
+                    finally
+                    {
+                        _activeSocket.Close();
+                    }
+                }
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    _socketSyncLock.Exit();
+                }
+            }
+        }
+
         public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, bool optionValue)
         {
             SetSocketOption(optionLevel, optionName, optionValue ? 1 : 0);

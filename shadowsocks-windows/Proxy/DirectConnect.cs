@@ -91,6 +91,11 @@ namespace Shadowsocks.Proxy
             _remote.Shutdown(how);
         }
 
+        public void Abort()
+        {
+            _remote.Abort();
+        }
+
         public void Close()
         {
             _remote.Dispose();

@@ -137,6 +137,69 @@ namespace Shadowsocks.Controller
         }
     }
 
+    internal enum Sip022InitialReadDisposition
+    {
+        Abort,
+        Continue,
+        Send
+    }
+
+    internal sealed class Sip022InitialResponseReader
+    {
+        private readonly AEAD2022Encryptor _encryptor;
+        private bool _consumed;
+
+        public Sip022InitialResponseReader(AEAD2022Encryptor encryptor)
+        {
+            _encryptor = encryptor ?? throw new ArgumentNullException(nameof(encryptor));
+        }
+
+        public Sip022InitialReadDisposition Read(byte[] input, int length, byte[] output,
+            out int outputLength)
+        {
+            // SIP022 3.1.4 forbids completing this header with another socket read.
+            if (_consumed)
+            {
+                throw new InvalidOperationException("The SIP022 response header read has already been consumed");
+            }
+            _consumed = true;
+            outputLength = 0;
+
+            int headerLength = _encryptor.TcpResponseHeaderLength;
+            if (length < headerLength)
+            {
+                return Sip022InitialReadDisposition.Abort;
+            }
+
+            // SIP022 requires salt + fixed-length header to be authenticated from
+            // exactly this one socket read. Do not let bytes after that boundary
+            // affect the initial-header failure disposition.
+            try
+            {
+                _encryptor.Decrypt(input, headerLength, output, out outputLength);
+            }
+            catch (CryptoErrorException)
+            {
+                return Sip022InitialReadDisposition.Abort;
+            }
+
+            int remaining = length - headerLength;
+            if (remaining == 0)
+            {
+                return Sip022InitialReadDisposition.Continue;
+            }
+
+            // The fixed header is now valid. Bytes that arrived in the same read
+            // are ordinary payload/chunk data and keep the normal error semantics.
+            Buffer.BlockCopy(input, headerLength, input, 0, remaining);
+            _encryptor.Decrypt(input, remaining, output, out outputLength);
+
+            return outputLength == 0
+                ? Sip022InitialReadDisposition.Continue
+                : Sip022InitialReadDisposition.Send;
+        }
+    }
+
     internal class TCPHandler
     {
         public event EventHandler<SSTCPConnectedEventArgs> OnConnected;
@@ -205,6 +268,9 @@ namespace Shadowsocks.Controller
 
         private IEncryptor _encryptor;
         private Server _server;
+
+        private Sip022InitialResponseReader _sip022InitialResponseReader;
+        private bool _remoteAborted;
 
         private AsyncSession _currentRemoteSession;
 
@@ -282,6 +348,11 @@ namespace Shadowsocks.Controller
             _remoteSendBuffer = new byte[
                 _encryptor is AEAD2022Encryptor ? DecryptedBufferSize : BufferSize];
 
+            var aead2022 = _encryptor as AEAD2022Encryptor;
+            _sip022InitialResponseReader = aead2022 == null
+                ? null
+                : new Sip022InitialResponseReader(aead2022);
+
             _server = server;
 
             /* prepare address buffer length for AEAD */
@@ -339,8 +410,11 @@ namespace Shadowsocks.Controller
                 try
                 {
                     IProxy remote = _currentRemoteSession.Remote;
-                    remote.Shutdown(SocketShutdown.Both);
-                    remote.Close();
+                    if (!_remoteAborted)
+                    {
+                        remote.Shutdown(SocketShutdown.Both);
+                        remote.Close();
+                    }
                 }
                 catch (Exception e)
                 {
@@ -889,12 +963,65 @@ namespace Shadowsocks.Controller
             try
             {
                 _startReceivingTime = DateTime.Now;
+                AsyncCallback remoteReceiveCallback = PipeRemoteReceiveCallback;
+                if (_sip022InitialResponseReader != null)
+                {
+                    remoteReceiveCallback = PipeSip022InitialRemoteReceiveCallback;
+                }
                 session.Remote.BeginReceive(_remoteRecvBuffer, 0, RecvSize, SocketFlags.None,
-                    PipeRemoteReceiveCallback, session);
+                    remoteReceiveCallback, session);
 
                 TryReadAvailableData();
                 Logger.Trace($"_firstPacketLength = {_firstPacketLength}");
                 SendToServer(_firstPacketLength, session);
+            }
+            catch (Exception e)
+            {
+                ErrorClose(e);
+            }
+        }
+
+        private void PipeSip022InitialRemoteReceiveCallback(IAsyncResult ar)
+        {
+            if (_closed)
+            {
+                return;
+            }
+
+            try
+            {
+                AsyncSession session = (AsyncSession)ar.AsyncState;
+                int bytesRead = session.Remote.EndReceive(ar);
+                _totalRead += bytesRead;
+                OnInbound?.Invoke(this, new SSTransmitEventArgs(_server, bytesRead));
+
+                Sip022InitialReadDisposition disposition;
+                int bytesToSend;
+                lock (_decryptionLock)
+                {
+                    disposition = _sip022InitialResponseReader.Read(
+                        _remoteRecvBuffer, bytesRead, _remoteSendBuffer, out bytesToSend);
+                    _sip022InitialResponseReader = null;
+                }
+
+                if (disposition == Sip022InitialReadDisposition.Abort)
+                {
+                    Logger.Error("Invalid SIP022 initial response");
+                    AbortSip022Response(session);
+                    return;
+                }
+
+                lastActivity = DateTime.Now;
+                if (disposition == Sip022InitialReadDisposition.Continue)
+                {
+                    session.Remote.BeginReceive(_remoteRecvBuffer, 0, RecvSize, SocketFlags.None,
+                        PipeRemoteReceiveCallback, session);
+                    return;
+                }
+
+                Logger.Trace($"start sending {bytesToSend}");
+                _connection.BeginSend(_remoteSendBuffer, 0, bytesToSend, SocketFlags.None,
+                    PipeConnectionSendCallback, new object[] { session, bytesToSend });
             }
             catch (Exception e)
             {
@@ -956,6 +1083,20 @@ namespace Shadowsocks.Controller
             {
                 ErrorClose(e);
             }
+        }
+
+        private void AbortSip022Response(AsyncSession session)
+        {
+            try
+            {
+                session.Remote.Abort();
+                _remoteAborted = true;
+            }
+            catch (Exception e)
+            {
+                Logger.LogUsefulException(e);
+            }
+            Close();
         }
 
         private void PipeConnectionReceiveCallback(IAsyncResult ar)

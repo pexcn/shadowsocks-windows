@@ -101,6 +101,9 @@ namespace Shadowsocks.Encryption.AEAD
         // Salt length equals key length for all three methods.
         private readonly int _keyLen;
 
+        internal int TcpResponseHeaderLength =>
+            _keyLen + 1 + TimestampSize + _keyLen + ChunkLenBytes + TagSize;
+
         // Only the receive side needs staging: TCP reads may split a frame at
         // any byte. The send side frames directly from the relay's input buffer.
         private ByteCircularBuffer _decCircularBuffer;
@@ -494,7 +497,7 @@ namespace Shadowsocks.Encryption.AEAD
 
             long timestamp = ReadInt64BE(header, 1);
             long now = _unixTimeSeconds();
-            long skew = Math.Abs(now - timestamp);
+            decimal skew = Math.Abs((decimal)now - timestamp);
             if (skew > MaxTimestampSkewSeconds)
             {
                 throw new CryptoErrorException(
@@ -837,7 +840,7 @@ namespace Shadowsocks.Encryption.AEAD
 
             long timestamp = ReadInt64BE(body, offset + 1);
             long now = _unixTimeSeconds();
-            long skew = Math.Abs(now - timestamp);
+            decimal skew = Math.Abs((decimal)now - timestamp);
             if (skew > MaxTimestampSkewSeconds)
             {
                 throw new CryptoErrorException(

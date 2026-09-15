@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Shadowsocks.Controller;
 using Shadowsocks.Encryption;
 using Shadowsocks.Encryption.AEAD;
 using Shadowsocks.Encryption.Exception;
@@ -140,7 +141,7 @@ namespace Shadowsocks.Test
         [DataRow("2022-blake3-aes-128-gcm")]
         [DataRow("2022-blake3-aes-256-gcm")]
         [DataRow("2022-blake3-chacha20-poly1305")]
-        public void TcpResponseCanArriveOneByteAtATime(string method)
+        public void TcpEncryptorCanParseResponseOneByteAtATime(string method)
         {
             Vector v = Vectors[method];
             using (var client = CreateClient(v, new Clock()))
@@ -156,6 +157,140 @@ namespace Shadowsocks.Test
                     plaintext.AddRange(output.Take(length));
                 }
                 CollectionAssert.AreEqual(ResponsePayload, plaintext.ToArray());
+            }
+        }
+
+        [TestMethod]
+        [DataRow("2022-blake3-aes-128-gcm")]
+        [DataRow("2022-blake3-aes-256-gcm")]
+        [DataRow("2022-blake3-chacha20-poly1305")]
+        public void TcpTransportAcceptsCompleteInitialResponseRead(string method)
+        {
+            Vector v = Vectors[method];
+            using (var client = CreateClient(v, new Clock()))
+            {
+                PrimeTcpRequest(client);
+                var reader = new Sip022InitialResponseReader(client);
+                byte[] response = Hex(v.TcpResponse);
+                byte[] output = new byte[1024];
+
+                Sip022InitialReadDisposition disposition = reader.Read(
+                    response, response.Length, output, out int length);
+
+                Assert.AreEqual(Sip022InitialReadDisposition.Send, disposition);
+                CollectionAssert.AreEqual(ResponsePayload, output.Take(length).ToArray());
+            }
+        }
+
+        [TestMethod]
+        [DataRow("2022-blake3-aes-128-gcm")]
+        [DataRow("2022-blake3-aes-256-gcm")]
+        [DataRow("2022-blake3-chacha20-poly1305")]
+        public void TcpTransportDoesNotContinueTruncatedInitialResponseRead(string method)
+        {
+            Vector v = Vectors[method];
+            using (var client = CreateClient(v, new Clock()))
+            {
+                PrimeTcpRequest(client);
+                var reader = new Sip022InitialResponseReader(client);
+                byte[] response = Hex(v.TcpResponse);
+                int truncatedLength = client.TcpResponseHeaderLength - 1;
+
+                Sip022InitialReadDisposition disposition = reader.Read(
+                    response, truncatedLength, new byte[1024], out int length);
+
+                Assert.AreEqual(Sip022InitialReadDisposition.Abort, disposition);
+                Assert.AreEqual(0, length);
+                Assert.ThrowsExactly<InvalidOperationException>(() =>
+                    reader.Read(response, 1, new byte[1024], out _));
+            }
+        }
+
+        [TestMethod]
+        public void TcpTransportInitialHeaderFailuresHaveOneDisposition()
+        {
+            Vector v = Vectors["2022-blake3-aes-128-gcm"];
+            var clock = new Clock();
+            byte[] badTag = Hex(v.TcpResponse);
+            badTag[16 + 1 + 8 + 16 + 2] ^= 1;
+            byte[] wrongType = BuildTcpServerResponse(v, clock.Now,
+                new[] { ResponsePayload }, 0, null);
+            byte[] wrongEcho = BuildTcpServerResponse(v, clock.Now,
+                new[] { ResponsePayload }, 1, Enumerable.Repeat((byte)0xee, KeyLength(v)).ToArray());
+            // Make unchecked (now - timestamp) wrap to long.MinValue in the old code.
+            long overflowTimestamp = long.MinValue + clock.Now;
+            byte[] wrongTimestamp = BuildTcpServerResponse(v, overflowTimestamp,
+                new[] { ResponsePayload }, 1, null);
+
+            foreach (byte[] response in new[] { badTag, wrongType, wrongEcho, wrongTimestamp })
+            {
+                using (var client = CreateClient(v, clock))
+                {
+                    PrimeTcpRequest(client);
+                    var reader = new Sip022InitialResponseReader(client);
+                    Sip022InitialReadDisposition disposition = reader.Read(
+                        response, response.Length, new byte[1024], out int length);
+
+                    Assert.AreEqual(Sip022InitialReadDisposition.Abort, disposition);
+                    Assert.AreEqual(0, length);
+                }
+            }
+        }
+
+        [TestMethod]
+        public void TcpTransportDoesNotClassifyPayloadFailureAsInitialHeaderFailure()
+        {
+            Vector v = Vectors["2022-blake3-aes-128-gcm"];
+            var clock = new Clock();
+            byte[] response = BuildTcpServerResponse(v, clock.Now,
+                new[] { ResponsePayload }, 1, null);
+            response[response.Length - 1] ^= 1;
+
+            using (var client = CreateClient(v, clock))
+            {
+                PrimeTcpRequest(client);
+                var reader = new Sip022InitialResponseReader(client);
+
+                Assert.ThrowsExactly<CryptoErrorException>(() =>
+                    reader.Read(response, response.Length, new byte[1024], out _));
+            }
+        }
+
+        [TestMethod]
+        [DataRow("2022-blake3-aes-128-gcm")]
+        [DataRow("2022-blake3-aes-256-gcm")]
+        [DataRow("2022-blake3-chacha20-poly1305")]
+        public void TcpTransportAllowsFragmentationAfterInitialHeader(string method)
+        {
+            Vector v = Vectors[method];
+            var clock = new Clock();
+            byte[] secondChunk = Encoding.ASCII.GetBytes("again");
+            byte[] response = BuildTcpServerResponse(v, clock.Now,
+                new[] { ResponsePayload, secondChunk }, 1, null);
+
+            using (var client = CreateClient(v, clock))
+            {
+                PrimeTcpRequest(client);
+                var reader = new Sip022InitialResponseReader(client);
+                int headerLength = client.TcpResponseHeaderLength;
+
+                Sip022InitialReadDisposition disposition = reader.Read(
+                    response, headerLength, new byte[1024], out int initialLength);
+
+                Assert.AreEqual(Sip022InitialReadDisposition.Continue, disposition);
+                Assert.AreEqual(0, initialLength);
+
+                var plaintext = new List<byte>();
+                for (int i = headerLength; i < response.Length; i++)
+                {
+                    byte[] one = { response[i] };
+                    byte[] output = new byte[1024];
+                    client.Decrypt(one, one.Length, output, out int length);
+                    plaintext.AddRange(output.Take(length));
+                }
+
+                CollectionAssert.AreEqual(
+                    ResponsePayload.Concat(secondChunk).ToArray(), plaintext.ToArray());
             }
         }
 
@@ -251,6 +386,12 @@ namespace Shadowsocks.Test
                     UdpResponse, 0, true);
                 Assert.ThrowsExactly<CryptoErrorException>(() =>
                     client.DecryptUDP(badEcho, badEcho.Length, new byte[1024], out _));
+
+                long overflowTimestamp = long.MinValue + clock.Now;
+                byte[] badTimestamp = BuildUdpServerPacket(v, overflowTimestamp, 0xa0, 7,
+                    UdpResponse, 0, false);
+                Assert.ThrowsExactly<CryptoErrorException>(() =>
+                    client.DecryptUDP(badTimestamp, badTimestamp.Length, new byte[1024], out _));
 
                 Assert.ThrowsExactly<CryptoErrorException>(() =>
                     client.DecryptUDP(valid, valid.Length, new byte[1], out _));
