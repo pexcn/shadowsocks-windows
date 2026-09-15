@@ -41,7 +41,7 @@ namespace Shadowsocks.Encryption.AEAD
         {
             base.InitCipher(salt, isEncrypt, isUdp);
             DeriveSessionKey(isEncrypt ? _encryptSalt : _decryptSalt, _masterKey,
-                isEncrypt ? _sodiumEncSubkey : _sodiumDecSubkey);
+                isEncrypt ? _sodiumEncSubkey : _sodiumDecSubkey, isEncrypt);
         }
 
         protected override int CipherEncrypt(byte[] plaintext, int plainOffset, int plainLen,
@@ -101,6 +101,7 @@ namespace Shadowsocks.Encryption.AEAD
 
         public override void Dispose()
         {
+            DisposeHkdfContexts();
         }
     }
 }

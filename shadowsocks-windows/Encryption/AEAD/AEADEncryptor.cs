@@ -25,6 +25,8 @@ namespace Shadowsocks.Encryption.AEAD
         private byte[] _decLengthCipher;
         private byte[] _decLengthPlain;
         private int _pendingChunkLen = -1;
+        private readonly LibSsCryptoHash.HkdfContext _encryptHkdfContext;
+        private readonly LibSsCryptoHash.HkdfContext _decryptHkdfContext;
 
         public const int CHUNK_LEN_BYTES = 2;
         public const uint CHUNK_LEN_MASK = 0x3FFFu;
@@ -62,6 +64,16 @@ namespace Shadowsocks.Encryption.AEAD
             _decLengthCipher = new byte[CHUNK_LEN_BYTES + tagLen];
             _decLengthPlain = new byte[CHUNK_LEN_BYTES];
             _decryptSaltBuffer = new byte[saltLen];
+            _encryptHkdfContext = new LibSsCryptoHash.HkdfContext();
+            try
+            {
+                _decryptHkdfContext = new LibSsCryptoHash.HkdfContext();
+            }
+            catch
+            {
+                _encryptHkdfContext.Dispose();
+                throw;
+            }
         }
 
         protected abstract Dictionary<string, EncryptorInfo> getCiphers();
@@ -114,11 +126,21 @@ namespace Shadowsocks.Encryption.AEAD
             }
         }
 
-        public void DeriveSessionKey(byte[] salt, byte[] masterKey, byte[] sessionKey)
+        protected void DeriveSessionKey(byte[] salt, byte[] masterKey, byte[] sessionKey,
+            bool isEncrypt)
         {
-            int ret = LibSsCryptoHash.hkdf(salt, saltLen, masterKey, keyLen, InfoBytes, InfoBytes.Length,
+            LibSsCryptoHash.HkdfContext context = isEncrypt
+                ? _encryptHkdfContext
+                : _decryptHkdfContext;
+            int ret = context.Derive(salt, saltLen, masterKey, keyLen, InfoBytes, InfoBytes.Length,
                 sessionKey, keyLen);
             if (ret != 0) throw new System.Exception("failed to generate session key");
+        }
+
+        protected void DisposeHkdfContexts()
+        {
+            _encryptHkdfContext.Dispose();
+            _decryptHkdfContext.Dispose();
         }
 
         private static void IncrementLittleEndian(byte[] nonce)

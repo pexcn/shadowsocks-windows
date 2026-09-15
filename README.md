@@ -77,8 +77,7 @@ ReactiveUI.Events.WPF (MIT)      https://github.com/reactiveui/ReactiveUI
 ReactiveUI.Fody (MIT)            https://github.com/reactiveui/ReactiveUI
 ReactiveUI.Validation (MIT)      https://github.com/reactiveui/ReactiveUI.Validation
 ZXing.Net (Apache 2.0)           https://github.com/micjahn/ZXing.Net
-
-libsscrypto (GPLv2)    https://github.com/shadowsocks/libsscrypto
+libsscrypto (GPLv2)              https://github.com/pexcn/libsscrypto
 ```
 
 

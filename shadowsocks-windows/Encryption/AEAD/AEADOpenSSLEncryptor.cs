@@ -50,7 +50,7 @@ namespace Shadowsocks.Encryption.AEAD
                 base.InitCipher(salt, isEncrypt, isUdp);
 
                 byte[] subkey = isEncrypt ? _opensslEncSubkey : _opensslDecSubkey;
-                DeriveSessionKey(isEncrypt ? _encryptSalt : _decryptSalt, _masterKey, subkey);
+                DeriveSessionKey(isEncrypt ? _encryptSalt : _decryptSalt, _masterKey, subkey, isEncrypt);
 
                 EnsureContext(isEncrypt, subkey);
             }
@@ -167,6 +167,7 @@ namespace Shadowsocks.Encryption.AEAD
                     if (_disposed) return;
                     _disposed = true;
 
+                    DisposeHkdfContexts();
                     if (_encryptCtx != IntPtr.Zero)
                     {
                         OpenSSL.AeadContextFree(_encryptCtx);
