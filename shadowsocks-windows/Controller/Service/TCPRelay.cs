@@ -239,7 +239,7 @@ namespace Shadowsocks.Controller
         private readonly int _proxyTimeout;
 
         // each recv size.
-        public const int RecvSize = 2048;
+        public const int RecvSize = 8192;
 
         // overhead of one chunk, reserved for AEAD ciphers
         public const int ChunkOverheadSize = 16 * 2 /* two tags */ + AEADEncryptor.CHUNK_LEN_BYTES;
