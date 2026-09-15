@@ -12,7 +12,6 @@ namespace Shadowsocks.Encryption.AEAD
 
         private readonly byte[] _opensslEncSubkey;
         private readonly byte[] _opensslDecSubkey;
-        private readonly IntPtr _cipherInfoPtr;
 
         private IntPtr _encryptCtx = IntPtr.Zero;
         private IntPtr _decryptCtx = IntPtr.Zero;
@@ -22,11 +21,6 @@ namespace Shadowsocks.Encryption.AEAD
         {
             _opensslEncSubkey = new byte[keyLen];
             _opensslDecSubkey = new byte[keyLen];
-            _cipherInfoPtr = OpenSSL.GetCipherInfo(_innerLibName);
-            if (_cipherInfoPtr == IntPtr.Zero)
-            {
-                throw new System.Exception("openssl: cipher not found");
-            }
         }
 
         private static readonly Dictionary<string, EncryptorInfo> _ciphers = new Dictionary<string, EncryptorInfo>
@@ -58,50 +52,26 @@ namespace Shadowsocks.Encryption.AEAD
                 byte[] subkey = isEncrypt ? _opensslEncSubkey : _opensslDecSubkey;
                 DeriveSessionKey(isEncrypt ? _encryptSalt : _decryptSalt, _masterKey, subkey);
 
-                IntPtr ctx = EnsureContext(isEncrypt);
-                int direction = isEncrypt ? OpenSSL.OPENSSL_ENCRYPT : OpenSSL.OPENSSL_DECRYPT;
-                int ret = OpenSSL.EVP_CipherInit_ex(ctx, IntPtr.Zero, IntPtr.Zero, subkey, null, direction);
-                if (ret != 1)
-                {
-                    throw new System.Exception("openssl: cannot set key");
-                }
+                EnsureContext(isEncrypt, subkey);
             }
         }
 
-        private IntPtr EnsureContext(bool isEncrypt)
+        private IntPtr EnsureContext(bool isEncrypt, byte[] key)
         {
             IntPtr ctx = isEncrypt ? _encryptCtx : _decryptCtx;
             if (ctx != IntPtr.Zero)
             {
+                if (OpenSSL.AeadContextSetKey(ctx, key, isEncrypt) != 0)
+                {
+                    throw new System.Exception("openssl: cannot set key");
+                }
                 return ctx;
             }
 
-            ctx = OpenSSL.EVP_CIPHER_CTX_new();
+            ctx = OpenSSL.AeadContextNew(_innerLibName, key, nonceLen, isEncrypt);
             if (ctx == IntPtr.Zero)
             {
-                throw new System.Exception("openssl: fail to create ctx");
-            }
-
-            int direction = isEncrypt ? OpenSSL.OPENSSL_ENCRYPT : OpenSSL.OPENSSL_DECRYPT;
-            try
-            {
-                int ret = OpenSSL.EVP_CipherInit_ex(ctx, _cipherInfoPtr, IntPtr.Zero, null, null, direction);
-                if (ret != 1) throw new System.Exception("openssl: fail to init ctx");
-
-                ret = OpenSSL.EVP_CIPHER_CTX_set_key_length(ctx, keyLen);
-                if (ret != 1) throw new System.Exception("openssl: fail to set key length");
-
-                ret = OpenSSL.EVP_CIPHER_CTX_ctrl(ctx, OpenSSL.EVP_CTRL_AEAD_SET_IVLEN,
-                    nonceLen, IntPtr.Zero);
-                if (ret != 1) throw new System.Exception("openssl: fail to set AEAD nonce length");
-
-                ret = OpenSSL.EVP_CIPHER_CTX_set_padding(ctx, 0);
-                if (ret != 1) throw new System.Exception("openssl: cannot disable padding");
-            }
-            catch
-            {
-                OpenSSL.EVP_CIPHER_CTX_free(ctx);
-                throw;
+                throw new System.Exception("openssl: fail to create cipher context");
             }
 
             if (isEncrypt)
@@ -199,12 +169,12 @@ namespace Shadowsocks.Encryption.AEAD
 
                     if (_encryptCtx != IntPtr.Zero)
                     {
-                        OpenSSL.EVP_CIPHER_CTX_free(_encryptCtx);
+                        OpenSSL.AeadContextFree(_encryptCtx);
                         _encryptCtx = IntPtr.Zero;
                     }
                     if (_decryptCtx != IntPtr.Zero)
                     {
-                        OpenSSL.EVP_CIPHER_CTX_free(_decryptCtx);
+                        OpenSSL.AeadContextFree(_decryptCtx);
                         _decryptCtx = IntPtr.Zero;
                     }
                 }

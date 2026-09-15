@@ -19,17 +19,9 @@ namespace Shadowsocks.Encryption
         private static readonly byte[] SessionSubkeyContext =
             Encoding.ASCII.GetBytes("shadowsocks 2022 session subkey");
 
-        // blake3_hasher is caller-allocated, and upstream calls its layout a
-        // private detail it is free to grow, so ask rather than hardcode
-        // today's 1912 bytes. The caller allocates the native context buffer.
-        private static readonly int HasherSize;
-
         static Blake3()
         {
-            // Must precede the first call: nothing else has pulled the DLL in
-            // by the time a static field initialiser would run.
             LibSsCrypto.EnsureLoaded();
-            HasherSize = (int)(uint)blake3_hasher_size();
         }
 
         /// <summary>
@@ -39,19 +31,11 @@ namespace Shadowsocks.Encryption
         /// </summary>
         public static void DeriveKey(byte[] context, byte[] keyMaterial, byte[] output)
         {
-            IntPtr hasher = Marshal.AllocHGlobal(HasherSize);
-            try
+            if (sscrypto_blake3_derive_key(context, (UIntPtr)(uint)context.Length,
+                    keyMaterial, (UIntPtr)(uint)keyMaterial.Length,
+                    null, UIntPtr.Zero, output, (UIntPtr)(uint)output.Length) != 0)
             {
-                blake3_hasher_init_derive_key_raw(hasher, context, (UIntPtr)(uint)context.Length);
-                if (keyMaterial.Length > 0)
-                {
-                    blake3_hasher_update(hasher, keyMaterial, (UIntPtr)(uint)keyMaterial.Length);
-                }
-                blake3_hasher_finalize(hasher, output, (UIntPtr)(uint)output.Length);
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(hasher);
+                throw new System.Exception("libsscrypto: BLAKE3 failure");
             }
         }
 
@@ -61,36 +45,22 @@ namespace Shadowsocks.Encryption
         /// </summary>
         public static void DeriveSessionSubkey(byte[] psk, byte[] salt, byte[] subkey)
         {
-            IntPtr hasher = Marshal.AllocHGlobal(HasherSize);
-            try
+            if (sscrypto_blake3_derive_key(SessionSubkeyContext,
+                    (UIntPtr)(uint)SessionSubkeyContext.Length,
+                    psk, (UIntPtr)(uint)psk.Length,
+                    salt, (UIntPtr)(uint)salt.Length,
+                    subkey, (UIntPtr)(uint)subkey.Length) != 0)
             {
-                blake3_hasher_init_derive_key_raw(hasher, SessionSubkeyContext,
-                    (UIntPtr)(uint)SessionSubkeyContext.Length);
-                blake3_hasher_update(hasher, psk, (UIntPtr)(uint)psk.Length);
-                blake3_hasher_update(hasher, salt, (UIntPtr)(uint)salt.Length);
-                blake3_hasher_finalize(hasher, subkey, (UIntPtr)(uint)subkey.Length);
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(hasher);
+                throw new System.Exception("libsscrypto: BLAKE3 failure");
             }
         }
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        private static extern UIntPtr blake3_hasher_size();
-
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        private static extern void blake3_hasher_init_derive_key_raw(IntPtr self, byte[] context,
-            UIntPtr contextLen);
-
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        private static extern void blake3_hasher_update(IntPtr self, byte[] input, UIntPtr inputLen);
-
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        private static extern void blake3_hasher_finalize(IntPtr self, byte[] output, UIntPtr outputLen);
+        private static extern int sscrypto_blake3_derive_key(
+            byte[] context, UIntPtr contextLen,
+            byte[] input1, UIntPtr input1Len,
+            byte[] input2, UIntPtr input2Len,
+            byte[] output, UIntPtr outputLen);
     }
 }

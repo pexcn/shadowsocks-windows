@@ -82,5 +82,19 @@ namespace Shadowsocks.Test
 
             Assert.AreEqual(Hex(viaDeriveKey), Hex(viaSessionSubkey));
         }
+
+        [TestMethod]
+        public void TestSessionSubkeySupportsEmptySegments()
+        {
+            byte[] context = Encoding.ASCII.GetBytes("shadowsocks 2022 session subkey");
+            byte[] empty = new byte[0];
+            byte[] expected = new byte[32];
+            byte[] actual = new byte[32];
+
+            Blake3.DeriveKey(context, empty, expected);
+            Blake3.DeriveSessionSubkey(empty, empty, actual);
+
+            Assert.AreEqual(Hex(expected), Hex(actual));
+        }
     }
 }

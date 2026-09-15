@@ -16,49 +16,10 @@ namespace Shadowsocks.Encryption.AEAD
 
         public AeadCipher(string cipherName, byte[] key, bool isEncrypt)
         {
-            int direction = isEncrypt ? OpenSSL.OPENSSL_ENCRYPT : OpenSSL.OPENSSL_DECRYPT;
-
-            IntPtr cipherInfo = OpenSSL.GetCipherInfo(cipherName);
-            if (cipherInfo == IntPtr.Zero)
-            {
-                throw new System.Exception($"openssl: cipher {cipherName} not found");
-            }
-
-            _ctx = OpenSSL.EVP_CIPHER_CTX_new();
+            _ctx = OpenSSL.AeadContextNew(cipherName, key, NonceSize, isEncrypt);
             if (_ctx == IntPtr.Zero)
             {
-                throw new System.Exception("openssl: fail to create ctx");
-            }
-
-            try
-            {
-                if (OpenSSL.EVP_CipherInit_ex(_ctx, cipherInfo, IntPtr.Zero, null, null, direction) != 1)
-                {
-                    throw new System.Exception("openssl: fail to init ctx");
-                }
-                if (OpenSSL.EVP_CIPHER_CTX_set_key_length(_ctx, key.Length) != 1)
-                {
-                    throw new System.Exception("openssl: fail to set key length");
-                }
-                if (OpenSSL.EVP_CIPHER_CTX_ctrl(_ctx, OpenSSL.EVP_CTRL_AEAD_SET_IVLEN,
-                        NonceSize, IntPtr.Zero) != 1)
-                {
-                    throw new System.Exception("openssl: fail to set AEAD nonce length");
-                }
-                if (OpenSSL.EVP_CipherInit_ex(_ctx, IntPtr.Zero, IntPtr.Zero, key, null, direction) != 1)
-                {
-                    throw new System.Exception("openssl: cannot set key");
-                }
-                if (OpenSSL.EVP_CIPHER_CTX_set_padding(_ctx, 0) != 1)
-                {
-                    throw new System.Exception("openssl: cannot disable padding");
-                }
-            }
-            catch
-            {
-                OpenSSL.EVP_CIPHER_CTX_free(_ctx);
-                _ctx = IntPtr.Zero;
-                throw;
+                throw new System.Exception($"openssl: fail to create {cipherName} context");
             }
         }
 
@@ -138,7 +99,7 @@ namespace Shadowsocks.Encryption.AEAD
             {
                 if (_ctx != IntPtr.Zero)
                 {
-                    OpenSSL.EVP_CIPHER_CTX_free(_ctx);
+                    OpenSSL.AeadContextFree(_ctx);
                     _ctx = IntPtr.Zero;
                 }
             }

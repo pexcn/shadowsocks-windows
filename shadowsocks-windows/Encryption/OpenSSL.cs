@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Security;
-using System.Text;
 
 namespace Shadowsocks.Encryption
 {
@@ -10,21 +9,26 @@ namespace Shadowsocks.Encryption
     {
         private const string DLLNAME = LibSsCrypto.DLLNAME;
 
-        public const int OPENSSL_ENCRYPT = 1;
-        public const int OPENSSL_DECRYPT = 0;
-
-        public const int EVP_CTRL_AEAD_SET_IVLEN = 0x9;
-
         static OpenSSL()
         {
             LibSsCrypto.EnsureLoaded();
         }
 
-        public static IntPtr GetCipherInfo(string cipherName)
+        public static IntPtr AeadContextNew(string cipherName, byte[] key,
+            int nonceLength, bool isEncrypt)
         {
-            var name = Encoding.ASCII.GetBytes(cipherName);
-            Array.Resize(ref name, name.Length + 1);
-            return EVP_get_cipherbyname(name);
+            return sscrypto_aead_ctx_new(cipherName, key, key.Length, nonceLength,
+                isEncrypt ? 1 : 0);
+        }
+
+        public static int AeadContextSetKey(IntPtr ctx, byte[] key, bool isEncrypt)
+        {
+            return sscrypto_aead_ctx_set_key(ctx, key, isEncrypt ? 1 : 0);
+        }
+
+        public static void AeadContextFree(IntPtr ctx)
+        {
+            sscrypto_aead_ctx_free(ctx);
         }
 
         public static unsafe int AeadEncrypt(IntPtr ctx, byte[] nonce,
@@ -84,34 +88,17 @@ namespace Shadowsocks.Encryption
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr EVP_CIPHER_CTX_new();
+        private static extern IntPtr sscrypto_aead_ctx_new(
+            [MarshalAs(UnmanagedType.LPStr)] string cipherName,
+            byte[] key, int keyLength, int nonceLength, int isEncrypt);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void EVP_CIPHER_CTX_free(IntPtr ctx);
+        private static extern int sscrypto_aead_ctx_set_key(
+            IntPtr ctx, byte[] key, int isEncrypt);
 
         [SuppressUnmanagedCodeSecurity]
         [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int EVP_CipherInit_ex(IntPtr ctx, IntPtr type,
-            IntPtr impl, byte[] key, byte[] iv, int enc);
-
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int EVP_CIPHER_CTX_set_padding(IntPtr x, int padding);
-
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int EVP_CIPHER_CTX_set_key_length(IntPtr x, int keylen);
-
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int EVP_CIPHER_CTX_ctrl(IntPtr ctx, int type, int arg, IntPtr ptr);
-
-        /// <summary>
-        /// simulate NUL-terminated string
-        /// </summary>
-        [SuppressUnmanagedCodeSecurity]
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr EVP_get_cipherbyname(byte[] name);
+        private static extern void sscrypto_aead_ctx_free(IntPtr ctx);
     }
 }
