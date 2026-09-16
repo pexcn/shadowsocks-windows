@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualBasic.FileIO;
+using Microsoft.VisualBasic.FileIO;
 using NLog;
 using Shadowsocks.Properties;
 using Shadowsocks.Util;

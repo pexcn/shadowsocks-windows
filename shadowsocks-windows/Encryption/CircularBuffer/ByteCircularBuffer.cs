@@ -1,4 +1,4 @@
-﻿#region Original License
+#region Original License
 
 //New BSD License(BSD)
 //
@@ -253,7 +253,7 @@ namespace Shadowsocks.Encryption.CircularBuffer
         }
 
         /// <summary>
-        /// Copies and removes the specified number elements from the <see cref="ByteCircularBuffer"/> to a compatible one-dimensional array, starting at the beginning of the target array. 
+        /// Copies and removes the specified number elements from the <see cref="ByteCircularBuffer"/> to a compatible one-dimensional array, starting at the beginning of the target array.
         /// </summary>
         /// <param name="array">The one-dimensional <see cref="Array"/> that is the destination of the elements copied from <see cref="ByteCircularBuffer"/>. The <see cref="Array"/> must have zero-based indexing.</param>
         /// <returns>The actual number of elements copied into <paramref name="array"/>.</returns>
@@ -264,7 +264,7 @@ namespace Shadowsocks.Encryption.CircularBuffer
         }
 
         /// <summary>
-        /// Copies and removes the specified number elements from the <see cref="ByteCircularBuffer"/> to a compatible one-dimensional array, starting at the specified index of the target array. 
+        /// Copies and removes the specified number elements from the <see cref="ByteCircularBuffer"/> to a compatible one-dimensional array, starting at the specified index of the target array.
         /// </summary>
         /// <param name="array">The one-dimensional <see cref="Array"/> that is the destination of the elements copied from <see cref="ByteCircularBuffer"/>. The <see cref="Array"/> must have zero-based indexing.</param>
         /// <param name="arrayIndex">The zero-based index in <paramref name="array"/> at which copying begins.</param>

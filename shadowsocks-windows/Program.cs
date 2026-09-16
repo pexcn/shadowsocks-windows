@@ -108,7 +108,7 @@ namespace Shadowsocks
 
             MainController.Start();
 
-            // Update online config 
+            // Update online config
             Task.Run(async () =>
             {
                 await Task.Delay(10 * 1000);

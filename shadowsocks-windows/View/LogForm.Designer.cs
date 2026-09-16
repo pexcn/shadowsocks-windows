@@ -1,4 +1,4 @@
-﻿namespace Shadowsocks.View
+namespace Shadowsocks.View
 {
     partial class LogForm
     {
@@ -61,9 +61,9 @@
             this.splitContainer1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trafficChart)).BeginInit();
             this.SuspendLayout();
-            // 
+            //
             // LogMessageTextBox
-            // 
+            //
             this.LogMessageTextBox.BackColor = System.Drawing.Color.Black;
             this.LogMessageTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.LogMessageTextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -76,35 +76,35 @@
             this.LogMessageTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
             this.LogMessageTextBox.Size = new System.Drawing.Size(378, 74);
             this.LogMessageTextBox.TabIndex = 0;
-            // 
+            //
             // MainMenu
-            // 
+            //
             this.MainMenu.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
             this.FileMenuItem,
             this.ViewMenuItem});
-            // 
+            //
             // FileMenuItem
-            // 
+            //
             this.FileMenuItem.Index = 0;
             this.FileMenuItem.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
             this.OpenLocationMenuItem,
             this.ExitMenuItem});
             this.FileMenuItem.Text = "&File";
-            // 
+            //
             // OpenLocationMenuItem
-            // 
+            //
             this.OpenLocationMenuItem.Index = 0;
             this.OpenLocationMenuItem.Text = "&Open Location";
             this.OpenLocationMenuItem.Click += new System.EventHandler(this.OpenLocationMenuItem_Click);
-            // 
+            //
             // ExitMenuItem
-            // 
+            //
             this.ExitMenuItem.Index = 1;
             this.ExitMenuItem.Text = "E&xit";
             this.ExitMenuItem.Click += new System.EventHandler(this.ExitMenuItem_Click);
-            // 
+            //
             // ViewMenuItem
-            // 
+            //
             this.ViewMenuItem.Index = 1;
             this.ViewMenuItem.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
             this.ClearLogsMenuItem,
@@ -114,45 +114,45 @@
             this.MenuItemSeparater,
             this.ShowToolbarMenuItem});
             this.ViewMenuItem.Text = "&View";
-            // 
+            //
             // ClearLogsMenuItem
-            // 
+            //
             this.ClearLogsMenuItem.Index = 0;
             this.ClearLogsMenuItem.Text = "&Clear Logs";
             this.ClearLogsMenuItem.Click += new System.EventHandler(this.ClearLogsMenuItem_Click);
-            // 
+            //
             // ChangeFontMenuItem
-            // 
+            //
             this.ChangeFontMenuItem.Index = 1;
             this.ChangeFontMenuItem.Text = "Change &Font";
             this.ChangeFontMenuItem.Click += new System.EventHandler(this.ChangeFontMenuItem_Click);
-            // 
+            //
             // WrapTextMenuItem
-            // 
+            //
             this.WrapTextMenuItem.Index = 2;
             this.WrapTextMenuItem.Text = "&Wrap Text";
             this.WrapTextMenuItem.Click += new System.EventHandler(this.WrapTextMenuItem_Click);
-            // 
+            //
             // TopMostMenuItem
-            // 
+            //
             this.TopMostMenuItem.Index = 3;
             this.TopMostMenuItem.Text = "&Top Most";
             this.TopMostMenuItem.Click += new System.EventHandler(this.TopMostMenuItem_Click);
-            // 
+            //
             // MenuItemSeparater
-            // 
+            //
             this.MenuItemSeparater.Index = 4;
             this.MenuItemSeparater.Text = "-";
-            // 
+            //
             // ShowToolbarMenuItem
-            // 
+            //
             this.ShowToolbarMenuItem.Index = 5;
             this.ShowToolbarMenuItem.Text = "&Show Toolbar";
             this.ShowToolbarMenuItem.Click += new System.EventHandler(this.ShowToolbarMenuItem_Click);
-            // 
+            //
             // TopMostCheckBox
-            // 
-            this.TopMostCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            //
+            this.TopMostCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
             | System.Windows.Forms.AnchorStyles.Left)));
             this.TopMostCheckBox.AutoSize = true;
             this.TopMostCheckBox.Location = new System.Drawing.Point(249, 3);
@@ -162,9 +162,9 @@
             this.TopMostCheckBox.Text = "&Top Most";
             this.TopMostCheckBox.UseVisualStyleBackColor = true;
             this.TopMostCheckBox.CheckedChanged += new System.EventHandler(this.TopMostCheckBox_CheckedChanged);
-            // 
+            //
             // ChangeFontButton
-            // 
+            //
             this.ChangeFontButton.AutoSize = true;
             this.ChangeFontButton.Location = new System.Drawing.Point(84, 3);
             this.ChangeFontButton.Name = "ChangeFontButton";
@@ -173,9 +173,9 @@
             this.ChangeFontButton.Text = "&Font";
             this.ChangeFontButton.UseVisualStyleBackColor = true;
             this.ChangeFontButton.Click += new System.EventHandler(this.ChangeFontButton_Click);
-            // 
+            //
             // ClearLogsButton
-            // 
+            //
             this.ClearLogsButton.AutoSize = true;
             this.ClearLogsButton.Location = new System.Drawing.Point(3, 3);
             this.ClearLogsButton.Name = "ClearLogsButton";
@@ -184,10 +184,10 @@
             this.ClearLogsButton.Text = "&Clear Logs";
             this.ClearLogsButton.UseVisualStyleBackColor = true;
             this.ClearLogsButton.Click += new System.EventHandler(this.ClearLogsButton_Click);
-            // 
+            //
             // WrapTextCheckBox
-            // 
-            this.WrapTextCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            //
+            this.WrapTextCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
             | System.Windows.Forms.AnchorStyles.Left)));
             this.WrapTextCheckBox.AutoSize = true;
             this.WrapTextCheckBox.Location = new System.Drawing.Point(165, 3);
@@ -197,9 +197,9 @@
             this.WrapTextCheckBox.Text = "&Wrap Text";
             this.WrapTextCheckBox.UseVisualStyleBackColor = true;
             this.WrapTextCheckBox.CheckedChanged += new System.EventHandler(this.WrapTextCheckBox_CheckedChanged);
-            // 
+            //
             // tableLayoutPanel1
-            // 
+            //
             this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Controls.Add(this.ToolbarFlowLayoutPanel, 0, 0);
@@ -212,9 +212,9 @@
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(384, 161);
             this.tableLayoutPanel1.TabIndex = 2;
-            // 
+            //
             // ToolbarFlowLayoutPanel
-            // 
+            //
             this.ToolbarFlowLayoutPanel.AutoSize = true;
             this.ToolbarFlowLayoutPanel.Controls.Add(this.ClearLogsButton);
             this.ToolbarFlowLayoutPanel.Controls.Add(this.ChangeFontButton);
@@ -225,27 +225,27 @@
             this.ToolbarFlowLayoutPanel.Name = "ToolbarFlowLayoutPanel";
             this.ToolbarFlowLayoutPanel.Size = new System.Drawing.Size(378, 29);
             this.ToolbarFlowLayoutPanel.TabIndex = 2;
-            // 
+            //
             // splitContainer1
-            // 
+            //
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitContainer1.Location = new System.Drawing.Point(3, 38);
             this.splitContainer1.Name = "splitContainer1";
             this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
-            // 
+            //
             // splitContainer1.Panel1
-            // 
+            //
             this.splitContainer1.Panel1.Controls.Add(this.LogMessageTextBox);
-            // 
+            //
             // splitContainer1.Panel2
-            // 
+            //
             this.splitContainer1.Panel2.Controls.Add(this.trafficChart);
             this.splitContainer1.Size = new System.Drawing.Size(378, 120);
             this.splitContainer1.SplitterDistance = 74;
             this.splitContainer1.TabIndex = 3;
-            // 
+            //
             // trafficChart
-            // 
+            //
             chartArea1.AxisX.LabelStyle.Enabled = false;
             chartArea1.AxisX.MajorGrid.Interval = 5D;
             chartArea1.AxisX.MajorGrid.LineColor = System.Drawing.Color.LightGray;
@@ -287,9 +287,9 @@
             this.trafficChart.Size = new System.Drawing.Size(378, 42);
             this.trafficChart.TabIndex = 0;
             this.trafficChart.Text = "chart1";
-            // 
+            //
             // LogForm
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.ClientSize = new System.Drawing.Size(384, 161);

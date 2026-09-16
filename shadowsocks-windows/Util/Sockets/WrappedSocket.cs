@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -8,7 +8,7 @@ namespace Shadowsocks.Util.Sockets
     /*
      * A wrapped socket class which support both ipv4 and ipv6 based on the
      * connected remote endpoint.
-     * 
+     *
      * If the server address is host name, then it may have both ipv4 and ipv6 address
      * after resolving. The main idea is we don't want to resolve and choose the address
      * by ourself. Instead, Socket.ConnectAsync() do handle this thing internally by trying

@@ -1,4 +1,4 @@
-﻿using Shadowsocks.Controller;
+using Shadowsocks.Controller;
 using Shadowsocks.Localization;
 using Shadowsocks.Model;
 using Shadowsocks.Properties;
@@ -558,7 +558,7 @@ namespace Shadowsocks.View
             int serverCount = 0;
             bool overflow = false;
             bool needAdd = true;
-            
+
             Configuration configuration = controller.GetCurrentConfiguration();
             for (int i = 0; i < configuration.configs.Count; i++)
             {
@@ -583,7 +583,7 @@ namespace Shadowsocks.View
                         items.Add(serverCount, item);
                         serverCount++;
                     }
-                    
+
                     if (overflow)
                     {
                         items.Add(serverCount, new MenuItem($"... more than {maxCount} (total {configuration.configs.Count})", Config_Click));

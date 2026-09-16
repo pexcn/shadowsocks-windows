@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -174,7 +174,7 @@ namespace Shadowsocks.Proxy
         {
             _remote.Dispose();
         }
-        
+
 
         private void ConnectCallback(IAsyncResult ar)
         {

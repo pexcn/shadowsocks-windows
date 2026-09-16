@@ -1,16 +1,16 @@
-﻿<reactiveui:ReactiveUserControl
+<reactiveui:ReactiveUserControl
     x:Class="Shadowsocks.Views.VersionUpdatePromptView"
     x:TypeArguments="vms:VersionUpdatePromptViewModel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:Shadowsocks.Views"
     xmlns:vms="clr-namespace:Shadowsocks.ViewModels"
     xmlns:reactiveui="http://reactiveui.net"
     xmlns:mdxam="clr-namespace:MdXaml;assembly=MdXaml"
     xmlns:lex="clr-namespace:Shadowsocks.Localization"
-    mc:Ignorable="d" 
+    mc:Ignorable="d"
     d:DesignHeight="480" d:DesignWidth="640">
     <Grid Margin="8">
         <Grid.RowDefinitions>

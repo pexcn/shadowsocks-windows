@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Shadowsocks.Controller;
 using System.Threading;
@@ -201,7 +201,7 @@ namespace Shadowsocks.Test
 
         [TestMethod]
         public void TestUrlGenerate()
-        { 
+        {
             var generateUrlCases = new Dictionary<string, Server>
             {
                 [server1CanonUrl] = server1,

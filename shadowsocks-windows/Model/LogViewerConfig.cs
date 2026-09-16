@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using Newtonsoft.Json;
@@ -71,7 +71,7 @@ namespace Shadowsocks.Model
         }
 
         [JsonIgnore]
-        // Use GetBestTop() and GetBestLeft() to ensure the log viwer form can be always display IN screen. 
+        // Use GetBestTop() and GetBestLeft() to ensure the log viwer form can be always display IN screen.
         public int BestLeft
         {
             get

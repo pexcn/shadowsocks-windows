@@ -1,4 +1,4 @@
-﻿using ReactiveUI;
+using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using Shadowsocks.Model;
 using System;

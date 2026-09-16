@@ -1,4 +1,4 @@
-﻿using Shadowsocks.Controller;
+using Shadowsocks.Controller;
 using System;
 using System.Collections.Generic;
 using System.Drawing;

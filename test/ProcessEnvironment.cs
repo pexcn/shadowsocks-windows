@@ -1,4 +1,4 @@
-﻿/* ***************************************************************************
+/* ***************************************************************************
 
 The component allows to read the environment variables of another process
 running in a Windows system.
@@ -6,7 +6,7 @@ running in a Windows system.
 History:
 
  - v1.2.ss Add GetCommandLine for convenience.
- 
+
  - v1.2: Added support for inspection of 64 bit processes from 32 bit host
  - v1.1: Fixed issue with environment block size detection
  - v1.0: Initial

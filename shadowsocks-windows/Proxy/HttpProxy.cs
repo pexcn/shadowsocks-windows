@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -64,8 +64,8 @@ namespace Shadowsocks.Proxy
         }
 
         private const string HTTP_CRLF = "\r\n";
-        private const string HTTP_CONNECT_TEMPLATE = 
-            "CONNECT {0} HTTP/1.1" + HTTP_CRLF + 
+        private const string HTTP_CONNECT_TEMPLATE =
+            "CONNECT {0} HTTP/1.1" + HTTP_CRLF +
             "Host: {0}" + HTTP_CRLF +
             "Proxy-Connection: keep-alive" + HTTP_CRLF +
             "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36" + HTTP_CRLF +
