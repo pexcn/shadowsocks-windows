@@ -23,6 +23,8 @@ namespace Shadowsocks.View
         string filename;
         Timer timer;
         const int BACK_OFFSET = 65536;
+        const int MAX_LOG_CHARS = 1024 * 1024;
+        const int LOG_TRIM_THRESHOLD = MAX_LOG_CHARS + 256 * 1024;
         ShadowsocksController controller;
 
         // global traffic update lock, make it static
@@ -46,7 +48,7 @@ namespace Shadowsocks.View
             this.controller = controller;
 
             InitializeComponent();
-            Icon = Icon.FromHandle(Resources.ssw128.GetHicon());
+            ViewUtils.SetFormIcon(this, Resources.ssw128);
 
             this.filename = NLogConfig.LogFile;
 
@@ -177,10 +179,12 @@ namespace Shadowsocks.View
                 string line = "";
                 StringBuilder appendText = new StringBuilder(1024);
                 while ((line = reader.ReadLine()) != null)
+                {
                     appendText.AppendLine(line);
+                    TrimLogBuffer(appendText);
+                }
 
-                LogMessageTextBox.AppendText(appendText.ToString());
-                LogMessageTextBox.ScrollToCaret();
+                AppendLogText(appendText.ToString());
 
                 lastOffset = reader.BaseStream.Position;
             }
@@ -207,12 +211,12 @@ namespace Shadowsocks.View
                     {
                         changed = true;
                         appendText.AppendLine(line);
+                        TrimLogBuffer(appendText);
                     }
 
                     if (changed)
                     {
-                        LogMessageTextBox.AppendText(appendText.ToString());
-                        LogMessageTextBox.ScrollToCaret();
+                        AppendLogText(appendText.ToString());
                     }
 
                     lastOffset = reader.BaseStream.Position;
@@ -221,6 +225,38 @@ namespace Shadowsocks.View
             catch (FileNotFoundException)
             {
             }
+        }
+
+        private static void TrimLogBuffer(StringBuilder buffer)
+        {
+            if (buffer.Length > LOG_TRIM_THRESHOLD)
+            {
+                buffer.Remove(0, buffer.Length - MAX_LOG_CHARS);
+            }
+        }
+
+        private void AppendLogText(string text)
+        {
+            if (text.Length > MAX_LOG_CHARS)
+            {
+                text = text.Substring(text.Length - MAX_LOG_CHARS);
+            }
+
+            int projectedLength = LogMessageTextBox.TextLength + text.Length;
+            if (projectedLength > LOG_TRIM_THRESHOLD)
+            {
+                int removeLength = projectedLength - MAX_LOG_CHARS;
+                removeLength = Math.Min(removeLength, LogMessageTextBox.TextLength);
+                if (removeLength > 0)
+                {
+                    LogMessageTextBox.Select(0, removeLength);
+                    LogMessageTextBox.SelectedText = string.Empty;
+                    LogMessageTextBox.ClearUndo();
+                }
+            }
+
+            LogMessageTextBox.AppendText(text);
+            LogMessageTextBox.ScrollToCaret();
         }
 
         private void LogForm_Load(object sender, EventArgs e)
@@ -256,7 +292,9 @@ namespace Shadowsocks.View
 
         private void LogForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            timer.Stop();
+            timer?.Stop();
+            timer?.Dispose();
+            timer = null;
             controller.TrafficChanged -= controller_TrafficChanged;
             LogViewerConfig config = controller.GetCurrentConfiguration().logViewer;
 

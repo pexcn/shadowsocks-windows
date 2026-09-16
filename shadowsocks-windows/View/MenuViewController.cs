@@ -25,6 +25,8 @@ namespace Shadowsocks.View
 
         private NotifyIcon _notifyIcon;
         private Icon icon, icon_in, icon_out, icon_both, previousIcon;
+        private readonly object _iconLock = new object();
+        private bool _isExiting;
 
         private bool _isStartupCheck;
         private string _urlToOpen;
@@ -101,10 +103,50 @@ namespace Shadowsocks.View
             Color colorMask = SelectColorMask();
             Size iconSize = SelectIconSize();
 
-            UpdateIconSet(colorMask, iconSize, out icon, out icon_in, out icon_out, out icon_both);
+            UpdateIconSet(colorMask, iconSize,
+                out Icon newIcon, out Icon newIn, out Icon newOut, out Icon newBoth);
 
-            previousIcon = icon;
-            _notifyIcon.Icon = previousIcon;
+            Icon oldIcon = null, oldIn = null, oldOut = null, oldBoth = null;
+            lock (_iconLock)
+            {
+                if (_isExiting)
+                {
+                    newIcon.Dispose();
+                    newIn.Dispose();
+                    newOut.Dispose();
+                    newBoth.Dispose();
+                    return;
+                }
+
+                try
+                {
+                    // Keep the current set alive until NotifyIcon accepts the new icon.
+                    _notifyIcon.Icon = newIcon;
+                }
+                catch
+                {
+                    newIcon.Dispose();
+                    newIn.Dispose();
+                    newOut.Dispose();
+                    newBoth.Dispose();
+                    throw;
+                }
+
+                oldIcon = icon;
+                oldIn = icon_in;
+                oldOut = icon_out;
+                oldBoth = icon_both;
+                icon = newIcon;
+                icon_in = newIn;
+                icon_out = newOut;
+                icon_both = newBoth;
+                previousIcon = icon;
+            }
+
+            oldIcon?.Dispose();
+            oldIn?.Dispose();
+            oldOut?.Dispose();
+            oldBoth?.Dispose();
 
             string serverInfo = config.GetCurrentServer().ToString();
             // show more info by hacking the P/Invoke declaration for NOTIFYICONDATA inside Windows Forms
@@ -162,16 +204,37 @@ namespace Shadowsocks.View
         private void UpdateIconSet(Color colorMask, Size size,
             out Icon icon, out Icon icon_in, out Icon icon_out, out Icon icon_both)
         {
-            Bitmap iconBitmap;
+            icon = icon_in = icon_out = icon_both = null;
+            try
+            {
+                using (Bitmap colored = ViewUtils.ChangeBitmapColor(Resources.ss32Fill, colorMask))
+                using (Bitmap baseBitmap = ViewUtils.AddBitmapOverlay(colored, Resources.ss32Outline))
+                {
+                    icon = CreateTrayIcon(baseBitmap, size);
+                    using (Bitmap inbound = ViewUtils.AddBitmapOverlay(baseBitmap, Resources.ss32In))
+                        icon_in = CreateTrayIcon(inbound, size);
+                    using (Bitmap outbound = ViewUtils.AddBitmapOverlay(baseBitmap, Resources.ss32Out))
+                        icon_out = CreateTrayIcon(outbound, size);
+                    using (Bitmap both = ViewUtils.AddBitmapOverlay(baseBitmap, Resources.ss32In, Resources.ss32Out))
+                        icon_both = CreateTrayIcon(both, size);
+                }
+            }
+            catch
+            {
+                icon?.Dispose();
+                icon_in?.Dispose();
+                icon_out?.Dispose();
+                icon_both?.Dispose();
+                throw;
+            }
+        }
 
-            // generate the base icon
-            iconBitmap = ViewUtils.ChangeBitmapColor(Resources.ss32Fill, colorMask);
-            iconBitmap = ViewUtils.AddBitmapOverlay(iconBitmap, Resources.ss32Outline);
-
-            icon = Icon.FromHandle(ViewUtils.ResizeBitmap(iconBitmap, size.Width, size.Height).GetHicon());
-            icon_in = Icon.FromHandle(ViewUtils.ResizeBitmap(ViewUtils.AddBitmapOverlay(iconBitmap, Resources.ss32In), size.Width, size.Height).GetHicon());
-            icon_out = Icon.FromHandle(ViewUtils.ResizeBitmap(ViewUtils.AddBitmapOverlay(iconBitmap, Resources.ss32In), size.Width, size.Height).GetHicon());
-            icon_both = Icon.FromHandle(ViewUtils.ResizeBitmap(ViewUtils.AddBitmapOverlay(iconBitmap, Resources.ss32In, Resources.ss32Out), size.Width, size.Height).GetHicon());
+        private static Icon CreateTrayIcon(Bitmap bitmap, Size size)
+        {
+            using (Bitmap resized = ViewUtils.ResizeBitmap(bitmap, size.Width, size.Height))
+            {
+                return ViewUtils.CreateIcon(resized);
+            }
         }
 
         #endregion
@@ -226,27 +289,30 @@ namespace Shadowsocks.View
 
         private void controller_TrafficChanged(object sender, EventArgs e)
         {
-            if (icon == null)
-                return;
-
-            Icon newIcon;
-
-            bool hasInbound = controller.trafficPerSecondQueue.Last().inboundIncreasement > 0;
-            bool hasOutbound = controller.trafficPerSecondQueue.Last().outboundIncreasement > 0;
-
-            if (hasInbound && hasOutbound)
-                newIcon = icon_both;
-            else if (hasInbound)
-                newIcon = icon_in;
-            else if (hasOutbound)
-                newIcon = icon_out;
-            else
-                newIcon = icon;
-
-            if (newIcon != this.previousIcon)
+            lock (_iconLock)
             {
-                this.previousIcon = newIcon;
-                _notifyIcon.Icon = newIcon;
+                if (_isExiting || icon == null)
+                    return;
+
+                Icon newIcon;
+
+                bool hasInbound = controller.trafficPerSecondQueue.Last().inboundIncreasement > 0;
+                bool hasOutbound = controller.trafficPerSecondQueue.Last().outboundIncreasement > 0;
+
+                if (hasInbound && hasOutbound)
+                    newIcon = icon_both;
+                else if (hasInbound)
+                    newIcon = icon_in;
+                else if (hasOutbound)
+                    newIcon = icon_out;
+                else
+                    newIcon = icon;
+
+                if (newIcon != previousIcon)
+                {
+                    previousIcon = newIcon;
+                    _notifyIcon.Icon = newIcon;
+                }
             }
         }
 
@@ -453,8 +519,27 @@ namespace Shadowsocks.View
 
         private void Quit_Click(object sender, EventArgs e)
         {
+            controller.TrafficChanged -= controller_TrafficChanged;
+            lock (_iconLock)
+            {
+                _isExiting = true;
+            }
+
             controller.Stop();
-            _notifyIcon.Visible = false;
+
+            lock (_iconLock)
+            {
+                _notifyIcon.Visible = false;
+                _notifyIcon.Icon = null;
+                _notifyIcon.Dispose();
+                icon?.Dispose();
+                icon_in?.Dispose();
+                icon_out?.Dispose();
+                icon_both?.Dispose();
+                icon = icon_in = icon_out = icon_both = previousIcon = null;
+            }
+
+            contextMenu1.Dispose();
             Application.Exit();
         }
 

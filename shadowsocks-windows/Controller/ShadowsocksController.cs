@@ -121,6 +121,7 @@ namespace Shadowsocks.Controller
             Configuration.Process(ref _config);
 
             // set User-Agent for httpClient
+            httpClient.DefaultRequestHeaders.Remove("User-Agent");
             try
             {
                 if (!string.IsNullOrWhiteSpace(_config.userAgentString))
@@ -130,6 +131,7 @@ namespace Shadowsocks.Controller
             {
                 // reset userAgent to default and reapply
                 Configuration.ResetUserAgent(_config);
+                httpClient.DefaultRequestHeaders.Remove("User-Agent");
                 httpClient.DefaultRequestHeaders.Add("User-Agent", _config.userAgentString);
             }
 

@@ -1,6 +1,7 @@
 using Shadowsocks.Controller;
 using Shadowsocks.Model;
 using Shadowsocks.Properties;
+using Shadowsocks.Util;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -109,7 +110,7 @@ namespace Shadowsocks.View
 
             UpdateTexts();
             SetupValueChangedListeners();
-            Icon = Icon.FromHandle(Resources.ssw128.GetHicon());
+            ViewUtils.SetFormIcon(this, Resources.ssw128);
 
             this.controller = controller;
             controller.ConfigChanged += Controller_ConfigChanged;

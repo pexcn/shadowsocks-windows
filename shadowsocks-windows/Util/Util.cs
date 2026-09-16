@@ -70,17 +70,19 @@ namespace Shadowsocks.Util
             WindowsThemeMode themeMode = WindowsThemeMode.Dark;
             try
             {
-                RegistryKey reg_ThemesPersonalize = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", false);
-                if (reg_ThemesPersonalize.GetValue("SystemUsesLightTheme") != null)
+                using (RegistryKey reg_ThemesPersonalize = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", false))
                 {
-                    if ((int)(reg_ThemesPersonalize.GetValue("SystemUsesLightTheme")) == 0) // 0:dark mode, 1:light mode
-                        themeMode = WindowsThemeMode.Dark;
+                    object value = reg_ThemesPersonalize?.GetValue("SystemUsesLightTheme");
+                    if (value != null)
+                    {
+                        // 0: dark mode, 1: light mode
+                        themeMode = (int)value == 0 ? WindowsThemeMode.Dark : WindowsThemeMode.Light;
+                    }
                     else
-                        themeMode = WindowsThemeMode.Light;
-                }
-                else
-                {
-                    throw new Exception("Reg-Value SystemUsesLightTheme not found.");
+                    {
+                        throw new Exception("Reg-Value SystemUsesLightTheme not found.");
+                    }
                 }
             }
             catch
@@ -250,21 +252,21 @@ namespace Shadowsocks.Util
                         int marginLeft = (int)((double)fullImage.Width * i / 2.5 / maxTry);
                         int marginTop = (int)((double)fullImage.Height * i / 2.5 / maxTry);
                         Rectangle cropRect = new Rectangle(marginLeft, marginTop, fullImage.Width - marginLeft * 2, fullImage.Height - marginTop * 2);
-                        Bitmap target = new Bitmap(screen.Bounds.Width, screen.Bounds.Height);
-
-                        double imageScale = (double)screen.Bounds.Width / (double)cropRect.Width;
-                        using (Graphics g = Graphics.FromImage(target))
+                        using (Bitmap target = new Bitmap(screen.Bounds.Width, screen.Bounds.Height))
                         {
-                            g.DrawImage(fullImage, new Rectangle(0, 0, target.Width, target.Height),
-                                            cropRect,
-                                            GraphicsUnit.Pixel);
+                            using (Graphics g = Graphics.FromImage(target))
+                            {
+                                g.DrawImage(fullImage, new Rectangle(0, 0, target.Width, target.Height),
+                                                cropRect,
+                                                GraphicsUnit.Pixel);
+                            }
+                            var source = new BitmapLuminanceSource(target);
+                            var bitmap = new BinaryBitmap(new HybridBinarizer(source));
+                            QRCodeReader reader = new QRCodeReader();
+                            var result = reader.decode(bitmap);
+                            if (result != null)
+                                return result.Text;
                         }
-                        var source = new BitmapLuminanceSource(target);
-                        var bitmap = new BinaryBitmap(new HybridBinarizer(source));
-                        QRCodeReader reader = new QRCodeReader();
-                        var result = reader.decode(bitmap);
-                        if (result != null)
-                            return result.Text;
                     }
                 }
             }

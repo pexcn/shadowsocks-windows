@@ -88,27 +88,36 @@ namespace Shadowsocks.Controller
                 UDPState udpState = new UDPState(_udpSocket);
                 _udpSocket.BeginReceiveFrom(udpState.buffer, 0, udpState.buffer.Length, 0, ref udpState.remoteEndPoint, new AsyncCallback(RecvFromCallback), udpState);
             }
-            catch (SocketException)
+            catch
             {
-                _tcpSocket.Close();
+                CloseSocket(ref _tcpSocket);
+                CloseSocket(ref _udpSocket);
                 throw;
             }
         }
 
         public void Stop()
         {
-            if (_tcpSocket != null)
-            {
-                _tcpSocket.Close();
-                _tcpSocket = null;
-            }
-            if (_udpSocket != null)
-            {
-                _udpSocket.Close();
-                _udpSocket = null;
-            }
+            CloseSocket(ref _tcpSocket);
+            CloseSocket(ref _udpSocket);
 
             _services.ForEach(s => s.Stop());
+        }
+
+        private static void CloseSocket(ref Socket socket)
+        {
+            Socket socketToClose = socket;
+            socket = null;
+            if (socketToClose != null)
+            {
+                try
+                {
+                    socketToClose.Close();
+                }
+                catch
+                {
+                }
+            }
         }
 
         public void RecvFromCallback(IAsyncResult ar)

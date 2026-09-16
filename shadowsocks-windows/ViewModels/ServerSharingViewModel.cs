@@ -60,35 +60,38 @@ namespace Shadowsocks.ViewModels
 
             // paint bitmap
             int blockSize = Math.Max(1024 / byteMatrix.Height, 1);
-            Bitmap drawArea = new Bitmap((byteMatrix.Width * blockSize), (byteMatrix.Height * blockSize));
-            using (var graphics = Graphics.FromImage(drawArea))
+            BitmapImage bitmapImage = new BitmapImage();
+            using (Bitmap drawArea = new Bitmap((byteMatrix.Width * blockSize), (byteMatrix.Height * blockSize)))
             {
-                graphics.Clear(Color.White);
-                using (var solidBrush = new SolidBrush(Color.Black))
+                using (var graphics = Graphics.FromImage(drawArea))
                 {
-                    for (int row = 0; row < byteMatrix.Width; row++)
+                    graphics.Clear(Color.White);
+                    using (var solidBrush = new SolidBrush(Color.Black))
                     {
-                        for (int column = 0; column < byteMatrix.Height; column++)
+                        for (int row = 0; row < byteMatrix.Width; row++)
                         {
-                            if (byteMatrix[row, column] != 0)
+                            for (int column = 0; column < byteMatrix.Height; column++)
                             {
-                                graphics.FillRectangle(solidBrush, blockSize * row, blockSize * column, blockSize, blockSize);
+                                if (byteMatrix[row, column] != 0)
+                                {
+                                    graphics.FillRectangle(solidBrush, blockSize * row, blockSize * column, blockSize, blockSize);
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // transform to BitmapImage for binding
-            BitmapImage bitmapImage = new BitmapImage();
-            using (MemoryStream memoryStream = new MemoryStream())
-            {
-                drawArea.Save(memoryStream, System.Drawing.Imaging.ImageFormat.Bmp);
-                memoryStream.Position = 0;
-                bitmapImage.BeginInit();
-                bitmapImage.StreamSource = memoryStream;
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapImage.EndInit();
+                // transform to BitmapImage for binding
+                using (MemoryStream memoryStream = new MemoryStream())
+                {
+                    drawArea.Save(memoryStream, System.Drawing.Imaging.ImageFormat.Bmp);
+                    memoryStream.Position = 0;
+                    bitmapImage.BeginInit();
+                    bitmapImage.StreamSource = memoryStream;
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.EndInit();
+                    bitmapImage.Freeze();
+                }
             }
             SelectedServerUrlImage = bitmapImage;
         }

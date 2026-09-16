@@ -134,9 +134,13 @@ namespace Shadowsocks.Controller
                 {
                     var filename = (string)asset["name"];
                     var browser_download_url = (string)asset["browser_download_url"];
-                    var response = await httpClient.GetAsync(browser_download_url);
-                    using (var downloadedFileStream = File.Create(Utils.GetTempPath(filename)))
-                        await response.Content.CopyToAsync(downloadedFileStream);
+                    using (var response = await httpClient.GetAsync(
+                        browser_download_url, HttpCompletionOption.ResponseHeadersRead))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        using (var downloadedFileStream = File.Create(Utils.GetTempPath(filename)))
+                            await response.Content.CopyToAsync(downloadedFileStream);
+                    }
                     logger.Info($"Downloaded {filename}.");
                     // store .zip filename
                     if (filename.EndsWith(".zip"))
