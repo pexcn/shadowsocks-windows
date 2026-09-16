@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using NLog;
 using Shadowsocks.Encryption;
 using Shadowsocks.Encryption.Exception;
@@ -87,12 +89,18 @@ namespace Shadowsocks.Controller
         public class UDPHandler
         {
             private static Logger logger = LogManager.GetCurrentClassLogger();
+            private static readonly TimeSpan DnsRefreshInterval = TimeSpan.FromMinutes(1);
 
             private Socket _local;
             private Socket _remote;
 
             private Server _server;
-            private byte[] _buffer = new byte[65536];
+            private readonly bool _serverIsDomain;
+            private readonly object _remoteLock = new object();
+            private readonly object _decryptLock = new object();
+            private long _nextDnsRefreshTicks;
+            private bool _dnsRefreshInProgress;
+            private bool _closed;
 
             // One per handler, not one per datagram: the 2022 methods carry a
             // session id, a packet id counter and a replay window across the
@@ -103,13 +111,24 @@ namespace Shadowsocks.Controller
             private IPEndPoint _localEndPoint;
             private IPEndPoint _remoteEndPoint;
 
+            private class ReceiveState
+            {
+                public readonly Socket Socket;
+                public readonly byte[] Buffer = new byte[65536];
+
+                public ReceiveState(Socket socket)
+                {
+                    Socket = socket;
+                }
+            }
+
             // Read by the relay's idle sweep, written from both the thread that
             // sends and the one that receives.
             public DateTime lastActivity;
 
-            private IPAddress GetIPAddress()
+            private static IPAddress GetIPAddress(Socket socket)
             {
-                switch (_remote.AddressFamily)
+                switch (socket.AddressFamily)
                 {
                     case AddressFamily.InterNetwork:
                         return IPAddress.Any;
@@ -127,24 +146,162 @@ namespace Shadowsocks.Controller
                 _localEndPoint = localEndPoint;
                 lastActivity = DateTime.Now;
 
-                // TODO async resolving
                 IPAddress ipAddress;
                 bool parsed = IPAddress.TryParse(server.server, out ipAddress);
+                _serverIsDomain = !parsed;
                 if (!parsed)
                 {
-                    IPHostEntry ipHostInfo = Dns.GetHostEntry(server.server);
-                    ipAddress = ipHostInfo.AddressList[0];
+                    ipAddress = SelectIPAddress(Dns.GetHostAddresses(server.server), null);
+                    if (ipAddress == null)
+                    {
+                        throw new SocketException((int)SocketError.HostNotFound);
+                    }
                 }
                 _remoteEndPoint = new IPEndPoint(ipAddress, server.server_port);
                 _remote = new Socket(_remoteEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-                _remote.Bind(new IPEndPoint(GetIPAddress(), 0));
+                _remote.Bind(new IPEndPoint(GetIPAddress(_remote), 0));
+                _nextDnsRefreshTicks = DateTime.UtcNow.Add(DnsRefreshInterval).Ticks;
 
                 _encryptor = EncryptorFactory.GetEncryptor(server.method, server.password);
+            }
+
+            private static IPAddress SelectIPAddress(IPAddress[] addresses, IPAddress currentAddress)
+            {
+                foreach (IPAddress address in addresses)
+                {
+                    if (address.Equals(currentAddress))
+                    {
+                        return address;
+                    }
+                }
+
+                foreach (IPAddress address in addresses)
+                {
+                    if (currentAddress != null && address.AddressFamily == currentAddress.AddressFamily)
+                    {
+                        return address;
+                    }
+                }
+
+                foreach (IPAddress address in addresses)
+                {
+                    if (address.AddressFamily == AddressFamily.InterNetwork ||
+                        address.AddressFamily == AddressFamily.InterNetworkV6)
+                    {
+                        return address;
+                    }
+                }
+
+                return null;
+            }
+
+            private void RefreshRemoteEndPointIfNeeded()
+            {
+                if (!_serverIsDomain || DateTime.UtcNow.Ticks < Volatile.Read(ref _nextDnsRefreshTicks))
+                {
+                    return;
+                }
+
+                lock (_remoteLock)
+                {
+                    DateTime now = DateTime.UtcNow;
+                    if (_closed || _dnsRefreshInProgress || now.Ticks < Volatile.Read(ref _nextDnsRefreshTicks))
+                    {
+                        return;
+                    }
+
+                    _dnsRefreshInProgress = true;
+                    Volatile.Write(ref _nextDnsRefreshTicks, now.Add(DnsRefreshInterval).Ticks);
+                }
+
+                try
+                {
+                    Dns.GetHostAddressesAsync(_server.server).ContinueWith(
+                        RefreshRemoteEndPoint,
+                        TaskScheduler.Default);
+                }
+                catch (Exception e)
+                {
+                    lock (_remoteLock)
+                    {
+                        _dnsRefreshInProgress = false;
+                    }
+                    logger.Warn(e, $"Failed to refresh UDP server address for {_server.server}");
+                }
+            }
+
+            private void RefreshRemoteEndPoint(Task<IPAddress[]> task)
+            {
+                Socket oldSocket = null;
+                Socket newSocket = null;
+                try
+                {
+                    if (task.IsCanceled || task.IsFaulted)
+                    {
+                        Exception error = task.Exception?.GetBaseException();
+                        logger.Warn(error, $"Failed to refresh UDP server address for {_server.server}");
+                        return;
+                    }
+
+                    lock (_remoteLock)
+                    {
+                        if (_closed)
+                        {
+                            return;
+                        }
+
+                        IPAddress ipAddress = SelectIPAddress(task.Result, _remoteEndPoint.Address);
+                        if (ipAddress == null || ipAddress.Equals(_remoteEndPoint.Address))
+                        {
+                            return;
+                        }
+
+                        IPEndPoint newEndPoint = new IPEndPoint(ipAddress, _server.server_port);
+                        if (ipAddress.AddressFamily == _remoteEndPoint.AddressFamily)
+                        {
+                            _remoteEndPoint = newEndPoint;
+                            return;
+                        }
+
+                        newSocket = new Socket(ipAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+                        newSocket.Bind(new IPEndPoint(GetIPAddress(newSocket), 0));
+                        oldSocket = _remote;
+                        IPEndPoint oldEndPoint = _remoteEndPoint;
+                        _remote = newSocket;
+                        _remoteEndPoint = newEndPoint;
+                        try
+                        {
+                            Receive(new ReceiveState(newSocket));
+                        }
+                        catch
+                        {
+                            _remote = oldSocket;
+                            _remoteEndPoint = oldEndPoint;
+                            throw;
+                        }
+                    }
+
+                    newSocket = null;
+                    oldSocket?.Close();
+                }
+                catch (Exception e)
+                {
+                    logger.Warn(e, $"Failed to apply refreshed UDP server address for {_server.server}");
+                    newSocket?.Close();
+                }
+                finally
+                {
+                    lock (_remoteLock)
+                    {
+                        _dnsRefreshInProgress = false;
+                    }
+                }
             }
 
             public void Send(byte[] data, int length)
             {
                 lastActivity = DateTime.Now;
+                RefreshRemoteEndPointIfNeeded();
                 int inputLength = length - 3;
                 byte[] dataIn = ArrayPool<byte>.Shared.Rent(Math.Max(inputLength, 1));
                 byte[] dataOut = ArrayPool<byte>.Shared.Rent(65536);
@@ -163,8 +320,15 @@ namespace Shadowsocks.Controller
                         logger.Warn($"UDP encryption failed, dropping the packet: {e.Message}");
                         return;
                     }
-                    logger.Debug(_localEndPoint, _remoteEndPoint, outlen, "UDP Relay");
-                    _remote?.SendTo(dataOut, outlen, SocketFlags.None, _remoteEndPoint);
+                    lock (_remoteLock)
+                    {
+                        if (_closed)
+                        {
+                            return;
+                        }
+                        logger.Debug(_localEndPoint, _remoteEndPoint, outlen, "UDP Relay");
+                        _remote.SendTo(dataOut, outlen, SocketFlags.None, _remoteEndPoint);
+                    }
                 }
                 finally
                 {
@@ -175,9 +339,21 @@ namespace Shadowsocks.Controller
 
             public void Receive()
             {
-                EndPoint remoteEndPoint = new IPEndPoint(GetIPAddress(), 0);
-                logger.Debug($"++++++Receive Server Port, size:" + _buffer.Length);
-                _remote?.BeginReceiveFrom(_buffer, 0, _buffer.Length, 0, ref remoteEndPoint, new AsyncCallback(RecvFromCallback), null);
+                lock (_remoteLock)
+                {
+                    if (_closed)
+                    {
+                        return;
+                    }
+                    Receive(new ReceiveState(_remote));
+                }
+            }
+
+            private void Receive(ReceiveState state)
+            {
+                EndPoint remoteEndPoint = new IPEndPoint(GetIPAddress(state.Socket), 0);
+                logger.Debug($"++++++Receive Server Port, size:" + state.Buffer.Length);
+                state.Socket.BeginReceiveFrom(state.Buffer, 0, state.Buffer.Length, 0, ref remoteEndPoint, RecvFromCallback, state);
             }
 
             public void RecvFromCallback(IAsyncResult ar)
@@ -187,13 +363,16 @@ namespace Shadowsocks.Controller
                 byte[] sendBuf = null;
                 try
                 {
-                    if (_remote == null) return;
-                    EndPoint remoteEndPoint = new IPEndPoint(GetIPAddress(), 0);
-                    int bytesRead = _remote.EndReceiveFrom(ar, ref remoteEndPoint);
+                    ReceiveState state = (ReceiveState)ar.AsyncState;
+                    EndPoint remoteEndPoint = new IPEndPoint(GetIPAddress(state.Socket), 0);
+                    int bytesRead = state.Socket.EndReceiveFrom(ar, ref remoteEndPoint);
 
                     dataOut = ArrayPool<byte>.Shared.Rent(65536);
                     int outlen;
-                    _encryptor.DecryptUDP(_buffer, bytesRead, dataOut, out outlen);
+                    lock (_decryptLock)
+                    {
+                        _encryptor.DecryptUDP(state.Buffer, bytesRead, dataOut, out outlen);
+                    }
                     // Only authenticated packets refresh the idle timeout. Moving this
                     // after DecryptUDP prevents unauthenticated traffic from keeping an
                     // otherwise idle UDP handler alive.
@@ -235,7 +414,14 @@ namespace Shadowsocks.Controller
                     {
                         try
                         {
-                            Receive();
+                            ReceiveState state = (ReceiveState)ar.AsyncState;
+                            lock (_remoteLock)
+                            {
+                                if (!_closed && ReferenceEquals(state.Socket, _remote))
+                                {
+                                    Receive(state);
+                                }
+                            }
                         }
                         catch (Exception e)
                         {
@@ -252,9 +438,21 @@ namespace Shadowsocks.Controller
 
             public void Close()
             {
+                Socket remote;
+                lock (_remoteLock)
+                {
+                    if (_closed)
+                    {
+                        return;
+                    }
+                    _closed = true;
+                    remote = _remote;
+                    _remote = null;
+                }
+
                 try
                 {
-                    _remote?.Close();
+                    remote?.Close();
                 }
                 catch (ObjectDisposedException)
                 {
